@@ -1,0 +1,38 @@
+{
+  "tokens": {
+    "f383394664c065183ff74a2e7a8fc39703dbf7f7bae1d3b1458432821f634238": {
+      "token": "f383394664c065183ff74a2e7a8fc39703dbf7f7bae1d3b1458432821f634238",
+      "email": "malikshoaibzain029@gmail.com",
+      "expiresAt": 1791487775587,
+      "used": true
+    },
+    "4a4fbca62690852039ea222f0f652f3df20086ec80d9af7d812f4884f433d5f6": {
+      "token": "4a4fbca62690852039ea222f0f652f3df20086ec80d9af7d812f4884f433d5f6",
+      "email": "malikshoaibzain@gmail.com",
+      "expiresAt": 1791488173648,
+      "used": true
+    }
+  },
+  "inbox": [
+    {
+      "id": "email-1791484573649-d6e5c551",
+      "to": "malikshoaibzain@gmail.com",
+      "subject": "🔐 Zubair Medical Complex - Password Reset Link",
+      "body": "Hello,\n\nA password reset was requested for your Staff & Admin account at Zubair Medical Complex Jhelum.\n\nClick the link below to set a new password:\nhttp://localhost:3000/admin/reset-password?token=4a4fbca62690852039ea222f0f652f3df20086ec80d9af7d812f4884f433d5f6&email=malikshoaibzain%40gmail.com\n\nThis link is valid for 60 minutes.\nIf you did not request this, please contact clinic security at 0318-3621341 immediately.",
+      "resetLink": "http://localhost:3000/admin/reset-password?token=4a4fbca62690852039ea222f0f652f3df20086ec80d9af7d812f4884f433d5f6&email=malikshoaibzain%40gmail.com",
+      "token": "4a4fbca62690852039ea222f0f652f3df20086ec80d9af7d812f4884f433d5f6",
+      "sentAt": "2026-10-08T18:36:13.649Z",
+      "delivered": true
+    },
+    {
+      "id": "email-1791484175588-4c859ec8",
+      "to": "malikshoaibzain029@gmail.com",
+      "subject": "🔐 Zubair Medical Complex - Password Reset Link",
+      "body": "Hello,\n\nA password reset was requested for your Staff & Admin account at Zubair Medical Complex Jhelum.\n\nClick the link below to set a new password:\nhttp://localhost:3000/admin/reset-password?token=f383394664c065183ff74a2e7a8fc39703dbf7f7bae1d3b1458432821f634238&email=malikshoaibzain029%40gmail.com\n\nThis link is valid for 60 minutes.\nIf you did not request this, please contact clinic security at 0318-3621341 immediately.",
+      "resetLink": "http://localhost:3000/admin/reset-password?token=f383394664c065183ff74a2e7a8fc39703dbf7f7bae1d3b1458432821f634238&email=malikshoaibzain029%40gmail.com",
+      "token": "f383394664c065183ff74a2e7a8fc39703dbf7f7bae1d3b1458432821f634238",
+      "sentAt": "2026-10-08T18:29:35.588Z",
+      "delivered": true
+    }
+  ]
+}

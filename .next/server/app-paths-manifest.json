@@ -1,0 +1,9 @@
+{
+  "/admin/dashboard/page": "app/admin/dashboard/page.js",
+  "/admin/reset-password/page": "app/admin/reset-password/page.js",
+  "/contact/page": "app/contact/page.js",
+  "/appointments/status/page": "app/appointments/status/page.js",
+  "/page": "app/page.js",
+  "/doctors/page": "app/doctors/page.js",
+  "/appointments/book/page": "app/appointments/book/page.js"
+}
