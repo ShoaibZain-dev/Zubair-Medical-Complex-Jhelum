@@ -204,29 +204,33 @@ function ensureDataFile(): DatabaseData {
     console.error('Error reading primary database file:', error);
   }
 
-  // 3. Use initial data
+  // 3. Fallback to initial default data (kept in memory, no disk write needed on initial read)
   memoryDbData = initialData;
-  saveDataFile(initialData);
   return memoryDbData;
 }
 
 function saveDataFile(data: DatabaseData): void {
   memoryDbData = data;
 
-  // 1. Attempt writing to Primary path (works in local dev)
-  try {
-    if (!fs.existsSync(PRIMARY_DATA_DIR)) {
-      fs.mkdirSync(PRIMARY_DATA_DIR, { recursive: true });
+  // If running on Vercel serverless environment, write directly to /tmp
+  const isVercel = Boolean(process.env.VERCEL || process.env.NEXT_PUBLIC_VERCEL_ENV);
+
+  if (!isVercel) {
+    // Attempt writing to Primary path (local development)
+    try {
+      if (!fs.existsSync(PRIMARY_DATA_DIR)) {
+        fs.mkdirSync(PRIMARY_DATA_DIR, { recursive: true });
+      }
+      const tempFile = `${PRIMARY_DB_FILE}.tmp`;
+      fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
+      fs.renameSync(tempFile, PRIMARY_DB_FILE);
+      return;
+    } catch (error) {
+      // Primary path is read-only
     }
-    const tempFile = `${PRIMARY_DB_FILE}.tmp`;
-    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
-    fs.renameSync(tempFile, PRIMARY_DB_FILE);
-    return;
-  } catch (error) {
-    // Primary path is read-only (e.g. Vercel serverless /var/task)
   }
 
-  // 2. Fallback: Write to OS temp directory (works on Vercel serverless /tmp)
+  // Fallback: Write to OS temp directory (/tmp)
   try {
     const tempFile = `${FALLBACK_DB_FILE}.tmp`;
     fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
