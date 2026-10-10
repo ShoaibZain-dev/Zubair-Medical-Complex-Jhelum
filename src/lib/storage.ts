@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { Doctor, DoctorSchedule, Appointment, AdminUser, SocialMediaLink, SystemSetting, NotificationLog } from '../types';
 
 interface DatabaseData {
@@ -12,8 +13,13 @@ interface DatabaseData {
   notificationLogs: NotificationLog[];
 }
 
-const DATA_DIR = path.join(process.cwd(), 'src', 'data');
-const DB_FILE = path.join(DATA_DIR, 'store.json');
+const PRIMARY_DATA_DIR = path.join(process.cwd(), 'src', 'data');
+const PRIMARY_DB_FILE = path.join(PRIMARY_DATA_DIR, 'store.json');
+
+const FALLBACK_DATA_DIR = os.tmpdir();
+const FALLBACK_DB_FILE = path.join(FALLBACK_DATA_DIR, 'zmc_store.json');
+
+let memoryDbData: DatabaseData | null = null;
 
 const INITIAL_DOCTORS: Doctor[] = [
   {
@@ -162,51 +168,72 @@ const INITIAL_SETTINGS: Record<string, string> = {
 };
 
 function ensureDataFile(): DatabaseData {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (memoryDbData) {
+    return memoryDbData;
   }
 
-  if (!fs.existsSync(DB_FILE)) {
-    const initialData: DatabaseData = {
-      doctors: INITIAL_DOCTORS,
-      schedules: INITIAL_SCHEDULES,
-      appointments: [],
-      users: [],
-      socialLinks: INITIAL_SOCIAL_LINKS,
-      settings: INITIAL_SETTINGS,
-      notificationLogs: []
-    };
-    fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2), 'utf8');
-    return initialData;
-  }
+  const initialData: DatabaseData = {
+    doctors: INITIAL_DOCTORS,
+    schedules: INITIAL_SCHEDULES,
+    appointments: [],
+    users: [],
+    socialLinks: INITIAL_SOCIAL_LINKS,
+    settings: INITIAL_SETTINGS,
+    notificationLogs: []
+  };
 
+  // 1. Try reading from fallback (temp) file if it exists
   try {
-    const raw = fs.readFileSync(DB_FILE, 'utf8');
-    const parsed: DatabaseData = JSON.parse(raw);
-    return parsed;
+    if (fs.existsSync(FALLBACK_DB_FILE)) {
+      const raw = fs.readFileSync(FALLBACK_DB_FILE, 'utf8');
+      memoryDbData = JSON.parse(raw);
+      return memoryDbData!;
+    }
   } catch (error) {
-    console.error('Error reading database file, recreating initial state:', error);
-    const initialData: DatabaseData = {
-      doctors: INITIAL_DOCTORS,
-      schedules: INITIAL_SCHEDULES,
-      appointments: [],
-      users: [],
-      socialLinks: INITIAL_SOCIAL_LINKS,
-      settings: INITIAL_SETTINGS,
-      notificationLogs: []
-    };
-    fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2), 'utf8');
-    return initialData;
+    console.error('Error reading fallback database file:', error);
   }
+
+  // 2. Try reading from primary project file if it exists
+  try {
+    if (fs.existsSync(PRIMARY_DB_FILE)) {
+      const raw = fs.readFileSync(PRIMARY_DB_FILE, 'utf8');
+      memoryDbData = JSON.parse(raw);
+      return memoryDbData!;
+    }
+  } catch (error) {
+    console.error('Error reading primary database file:', error);
+  }
+
+  // 3. Use initial data
+  memoryDbData = initialData;
+  saveDataFile(initialData);
+  return memoryDbData;
 }
 
 function saveDataFile(data: DatabaseData): void {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  memoryDbData = data;
+
+  // 1. Attempt writing to Primary path (works in local dev)
+  try {
+    if (!fs.existsSync(PRIMARY_DATA_DIR)) {
+      fs.mkdirSync(PRIMARY_DATA_DIR, { recursive: true });
+    }
+    const tempFile = `${PRIMARY_DB_FILE}.tmp`;
+    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
+    fs.renameSync(tempFile, PRIMARY_DB_FILE);
+    return;
+  } catch (error) {
+    // Primary path is read-only (e.g. Vercel serverless /var/task)
   }
-  const tempFile = `${DB_FILE}.tmp`;
-  fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
-  fs.renameSync(tempFile, DB_FILE);
+
+  // 2. Fallback: Write to OS temp directory (works on Vercel serverless /tmp)
+  try {
+    const tempFile = `${FALLBACK_DB_FILE}.tmp`;
+    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
+    fs.renameSync(tempFile, FALLBACK_DB_FILE);
+  } catch (error) {
+    console.error('Failed to save to fallback database file:', error);
+  }
 }
 
 // Storage API methods

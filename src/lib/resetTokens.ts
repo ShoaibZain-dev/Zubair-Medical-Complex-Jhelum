@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 export interface SimulatedEmail {
   id: string;
@@ -25,32 +26,53 @@ interface ResetStorageData {
   inbox: SimulatedEmail[];
 }
 
-const DATA_DIR = path.join(process.cwd(), 'src', 'data');
-const STORAGE_FILE = path.join(DATA_DIR, 'simulated_inbox.json');
+const PRIMARY_DATA_DIR = path.join(process.cwd(), 'src', 'data');
+const PRIMARY_STORAGE_FILE = path.join(PRIMARY_DATA_DIR, 'simulated_inbox.json');
+
+const FALLBACK_STORAGE_FILE = path.join(os.tmpdir(), 'zmc_simulated_inbox.json');
+
+let memoryResetData: ResetStorageData | null = null;
 
 function ensureData(): ResetStorageData {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(STORAGE_FILE)) {
-      const initial: ResetStorageData = { tokens: {}, inbox: [] };
-      fs.writeFileSync(STORAGE_FILE, JSON.stringify(initial, null, 2), 'utf-8');
-      return initial;
-    }
-    const raw = fs.readFileSync(STORAGE_FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return { tokens: {}, inbox: [] };
+  if (memoryResetData) {
+    return memoryResetData;
   }
+
+  const initial: ResetStorageData = { tokens: {}, inbox: [] };
+
+  try {
+    if (fs.existsSync(FALLBACK_STORAGE_FILE)) {
+      const raw = fs.readFileSync(FALLBACK_STORAGE_FILE, 'utf-8');
+      memoryResetData = JSON.parse(raw);
+      return memoryResetData!;
+    }
+  } catch {}
+
+  try {
+    if (fs.existsSync(PRIMARY_STORAGE_FILE)) {
+      const raw = fs.readFileSync(PRIMARY_STORAGE_FILE, 'utf-8');
+      memoryResetData = JSON.parse(raw);
+      return memoryResetData!;
+    }
+  } catch {}
+
+  memoryResetData = initial;
+  return memoryResetData;
 }
 
 function saveData(data: ResetStorageData): void {
+  memoryResetData = data;
+
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    if (!fs.existsSync(PRIMARY_DATA_DIR)) {
+      fs.mkdirSync(PRIMARY_DATA_DIR, { recursive: true });
     }
-    fs.writeFileSync(STORAGE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    fs.writeFileSync(PRIMARY_STORAGE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    return;
+  } catch {}
+
+  try {
+    fs.writeFileSync(FALLBACK_STORAGE_FILE, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
     console.error('Failed to save simulated inbox:', err);
   }
