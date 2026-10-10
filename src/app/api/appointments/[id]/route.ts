@@ -33,7 +33,7 @@ export async function PATCH(
     const body = await request.json();
     const { status, customNotes } = body;
 
-    if (!status || !['Pending', 'Confirmed', 'Completed', 'Cancelled'].includes(status)) {
+    if (!status || !['Pending', 'Booked', 'Checked', 'Cancelled'].includes(status)) {
       return NextResponse.json({ error: 'Valid status is required.' }, { status: 400 });
     }
 
@@ -48,14 +48,14 @@ export async function PATCH(
       return NextResponse.json({ error: 'Failed to update appointment' }, { status: 500 });
     }
 
-    // If status changed to Confirmed or Cancelled, automatically trigger notification
+    // If status changed to Booked or Cancelled, automatically trigger notification
     let notifResult = null;
-    if (previousStatus !== status && (status === 'Confirmed' || status === 'Cancelled' || status === 'Completed')) {
+    if (previousStatus !== status && (status === 'Booked' || status === 'Cancelled' || status === 'Checked')) {
       const doctor = storage.getDoctorById(updated.doctor_id);
       if (doctor) {
         try {
           const event =
-            status === 'Confirmed'
+            status === 'Booked'
               ? 'confirmed'
               : status === 'Cancelled'
               ? 'cancelled'

@@ -157,7 +157,11 @@ const INITIAL_SETTINGS: Record<string, string> = {
   hospital_whatsapp: '+92 315 6621341',
   hospital_whatsapp_url: 'https://wa.me/923156621341',
   hospital_notification_number: '+92 315 6621341',
+  // Staff notification channels (email + WhatsApp)
+  hospital_notification_email: '', // Admin must configure this - no default email invented
+  hospital_notification_whatsapp: '+92 315 6621341',
   messaging_provider: 'mock', // mock | meta_whatsapp | twilio | sms_gateway
+  email_provider: 'resend', // resend | mock
   notifications_enabled: 'true',
   default_slot_duration: '30',
   meta_whatsapp_phone_number_id: '',
@@ -512,12 +516,30 @@ export const storage = {
       timestamp: new Date().toISOString()
     };
     data.notificationLogs.unshift(newLog); // latest first
-    // keep max 200 logs
-    if (data.notificationLogs.length > 200) {
-      data.notificationLogs = data.notificationLogs.slice(0, 200);
+    // keep max 500 logs
+    if (data.notificationLogs.length > 500) {
+      data.notificationLogs = data.notificationLogs.slice(0, 500);
     }
     saveDataFile(data);
     return newLog;
+  },
+
+  /** Check if a notification was already sent for this appointment+event+channel+recipient combo */
+  hasNotificationBeenSent(
+    appointmentId: string,
+    event: string,
+    channel: string,
+    recipientType: string
+  ): boolean {
+    const data = ensureDataFile();
+    return data.notificationLogs.some(
+      l =>
+        l.appointment_id === appointmentId &&
+        l.event === event &&
+        l.channel === channel &&
+        l.recipient_type === recipientType &&
+        (l.status === 'sent' || l.status === 'delivered' || l.status === 'simulated')
+    );
   },
 
   getNotificationLogs(limit = 50): NotificationLog[] {

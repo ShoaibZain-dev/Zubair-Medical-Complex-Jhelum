@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import AdminNavbar from '@/components/AdminNavbar';
 import { NotificationLog } from '@/types';
 import { 
-  Bell, Save, CheckCircle2, AlertCircle, Shield, MessageSquare, 
-  Phone, Send, RefreshCw, KeyRound, Radio, Eye, Loader2 
+  Bell, Save, CheckCircle2, Mail, MessageSquare, 
+  Phone, RefreshCw, Radio, Loader2 
 } from 'lucide-react';
 
 export default function AdminNotificationsPage() {
@@ -17,7 +17,8 @@ export default function AdminNotificationsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Settings State
-  const [hospitalNumber, setHospitalNumber] = useState('0318-3621341');
+  const [hospitalWhatsApp, setHospitalWhatsApp] = useState('+92 315 6621341');
+  const [hospitalEmail, setHospitalEmail] = useState('');
   const [provider, setProvider] = useState<'mock' | 'meta_whatsapp' | 'twilio'>('mock');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
@@ -55,7 +56,8 @@ export default function AdminNotificationsPage() {
     ]).then(([settingsData, logsData]) => {
       setLoading(false);
       if (settingsData) {
-        setHospitalNumber(settingsData.hospital_notification_number || '+92 315 6621341');
+        setHospitalWhatsApp(settingsData.hospital_notification_whatsapp || settingsData.hospital_notification_number || '+92 315 6621341');
+        setHospitalEmail(settingsData.hospital_notification_email || '');
         setProvider(settingsData.messaging_provider || 'mock');
         setNotificationsEnabled(settingsData.notifications_enabled !== 'false');
         setMetaPhoneId(settingsData.meta_whatsapp_phone_number_id || '');
@@ -80,7 +82,9 @@ export default function AdminNotificationsPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          hospital_notification_number: hospitalNumber,
+          hospital_notification_whatsapp: hospitalWhatsApp,
+          hospital_notification_number: hospitalWhatsApp, // keep legacy key in sync
+          hospital_notification_email: hospitalEmail,
           messaging_provider: provider,
           notifications_enabled: notificationsEnabled ? 'true' : 'false',
           meta_whatsapp_phone_number_id: metaPhoneId,
@@ -174,24 +178,46 @@ export default function AdminNotificationsPage() {
                 </label>
               </div>
 
-              {/* Hospital Reception Notification Number */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-800">
-                  Hospital / Reception Notification Number
-                </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              {/* Hospital Staff Notification Channels */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-slate-700">Staff Notification Recipients</h4>
+
+                {/* WhatsApp Number */}
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                    <Phone className="w-3.5 h-3.5 text-green-500" /> Staff WhatsApp Number
+                  </label>
                   <input
                     type="text"
                     required
-                    value={hospitalNumber}
-                    onChange={e => setHospitalNumber(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:ring-2 focus:ring-[#1E90FF]"
+                    value={hospitalWhatsApp}
+                    onChange={e => setHospitalWhatsApp(e.target.value)}
+                    placeholder="+92 315 6621341"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:ring-2 focus:ring-[#1E90FF]"
                   />
+                  <span className="text-[11px] text-slate-400">
+                    Receives WhatsApp alerts on new bookings and status changes.
+                  </span>
                 </div>
-                <span className="text-[11px] text-slate-400">
-                  Receives automated alerts when new patient appointments are submitted.
-                </span>
+
+                {/* Email Address */}
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                    <Mail className="w-3.5 h-3.5 text-blue-500" /> Staff Notification Email
+                  </label>
+                  <input
+                    type="email"
+                    value={hospitalEmail}
+                    onChange={e => setHospitalEmail(e.target.value)}
+                    placeholder="reception@yourhospitaldomain.com"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-[#1E90FF]"
+                  />
+                  <span className="text-[11px] text-slate-400">
+                    Configure <code className="bg-slate-100 px-1 rounded">RESEND_API_KEY</code> +{' '}
+                    <code className="bg-slate-100 px-1 rounded">EMAIL_FROM</code> in Vercel env vars, then enter the staff email here.
+                    Leave blank to skip email notifications.
+                  </span>
+                </div>
               </div>
 
               {/* Provider Selection */}
@@ -349,27 +375,51 @@ export default function AdminNotificationsPage() {
 
             <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
               {logs.length > 0 ? (
-                logs.map(log => (
-                  <div key={log.id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-[#1E90FF]">{log.appointment_id}</span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-100 text-blue-800">
-                        {log.status}
-                      </span>
-                    </div>
+                logs.map(log => {
+                  const statusColors: Record<string, string> = {
+                    sent: 'bg-emerald-100 text-emerald-800',
+                    delivered: 'bg-emerald-100 text-emerald-800',
+                    simulated: 'bg-blue-100 text-blue-800',
+                    failed: 'bg-red-100 text-red-700',
+                    pending: 'bg-amber-100 text-amber-800'
+                  };
+                  const channelIcons: Record<string, string> = {
+                    email: '📧',
+                    whatsapp: '💬',
+                    sms: '📱',
+                    mock: '🧪'
+                  };
+                  return (
+                    <div key={log.id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-[#1E90FF]">{log.appointment_id}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-slate-500">{channelIcons[log.channel] || ''} {log.channel}</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${statusColors[log.status] || 'bg-slate-100 text-slate-600'}`}>
+                            {log.status}
+                          </span>
+                        </div>
+                      </div>
 
-                    <div className="text-[11px] text-slate-600 flex justify-between">
-                      <span>To: <strong className="font-mono">{log.recipient_number}</strong> ({log.recipient_type})</span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
+                      <div className="text-[11px] text-slate-600 flex justify-between">
+                        <span>To: <strong className="font-mono">{log.recipient_number}</strong> ({log.recipient_type})</span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
 
-                    <p className="text-[11px] text-slate-700 bg-white p-2 rounded-xl border border-slate-200/70 line-clamp-3 whitespace-pre-wrap font-sans">
-                      {log.message}
-                    </p>
-                  </div>
-                ))
+                      <p className="text-[11px] text-slate-700 bg-white p-2 rounded-xl border border-slate-200/70 line-clamp-3 whitespace-pre-wrap font-sans">
+                        {log.message}
+                      </p>
+
+                      {log.error_details && (
+                        <p className="text-[10px] text-red-500 bg-red-50 px-2 py-1 rounded-lg">
+                          ⚠ {log.error_details}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })
               ) : (
                 <div className="py-16 text-center text-slate-400 text-xs">
                   No notifications recorded yet. Book an appointment to trigger notification logs.

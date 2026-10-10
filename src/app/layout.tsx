@@ -3,6 +3,7 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import WhatsAppFloatingButton from '@/components/WhatsAppFloatingButton';
+import { LanguageProvider } from '@/context/LanguageContext';
 
 export const metadata: Metadata = {
   title: 'Zubair Medical Complex Jhelum | Professional Healthcare & Specialist Consultation',
@@ -18,12 +19,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased selection:bg-[#1E90FF] selection:text-white">
-        <Navbar />
-        <main className="flex-1">
-          {children}
-        </main>
-        <WhatsAppFloatingButton />
-        <Footer />
+        <LanguageProvider>
+          <Navbar />
+          <main className="flex-1">
+            {children}
+          </main>
+          <WhatsAppFloatingButton />
+          <Footer />
+        </LanguageProvider>
       </body>
     </html>
   );

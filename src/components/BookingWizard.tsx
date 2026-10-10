@@ -123,9 +123,13 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
         setErrorMessage('Dr. Muhammad Arshad is available exclusively on Saturdays (9:00 AM – 3:00 PM). Please select a Saturday.');
         return;
       }
-    }
 
-    setSelectedDate(val);
+      setSelectedDate(val);
+      // Auto-advance to time slot step
+      setCurrentStep(3);
+    } else {
+      setSelectedDate('');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -142,12 +146,15 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
       return;
     }
     if (!whatsapp.trim()) {
-      setErrorMessage('Please enter WhatsApp number.');
+      setErrorMessage('Please enter patient WhatsApp number (or check "Same as phone").');
       return;
     }
     if (!email.trim() || !email.includes('@')) {
-      setErrorMessage('Please enter a valid email address.');
-      return;
+      // Email is optional - only validate format if provided
+      if (email.trim() && !email.includes('@')) {
+        setErrorMessage('Please enter a valid email address if provided.');
+        return;
+      }
     }
     const ageNum = parseInt(age, 10);
     if (isNaN(ageNum) || ageNum <= 0 || ageNum > 120) {
@@ -220,39 +227,49 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
             </div>
           </div>
 
-          {/* Stepper Steps */}
+          {/* Stepper Steps — clickable for navigation */}
           <div className="grid grid-cols-4 gap-2 sm:gap-4 text-xs font-semibold">
             {[
               { num: 1, title: 'Doctor' },
               { num: 2, title: 'Date' },
               { num: 3, title: 'Time Slot' },
               { num: 4, title: 'Patient Info' }
-            ].map(step => (
-              <div 
-                key={step.num}
-                onClick={() => {
-                  if (step.num < currentStep) setCurrentStep(step.num);
-                }}
-                className={`flex items-center gap-2 p-2 rounded-xl border transition-all cursor-pointer ${
-                  currentStep === step.num
-                    ? 'bg-[#1E90FF] border-[#1E90FF] text-white shadow-md'
-                    : currentStep > step.num
-                    ? 'bg-slate-800/90 border-emerald-500/50 text-emerald-300'
-                    : 'bg-slate-800/40 border-slate-700 text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                  currentStep === step.num
-                    ? 'bg-white text-[#1E90FF]'
-                    : currentStep > step.num
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-slate-700 text-slate-300'
-                }`}>
-                  {currentStep > step.num ? '✓' : step.num}
-                </div>
-                <span className="hidden sm:inline truncate">{step.title}</span>
-              </div>
-            ))}
+            ].map(step => {
+              const isCompleted = currentStep > step.num;
+              const isCurrent = currentStep === step.num;
+              const isAccessible = 
+                step.num === 1 || 
+                (step.num === 2 && Boolean(selectedDoctorId)) ||
+                (step.num === 3 && Boolean(selectedDoctorId && selectedDate)) ||
+                (step.num === 4 && Boolean(selectedDoctorId && selectedDate && selectedTime));
+
+              return (
+                <button
+                  key={step.num}
+                  type="button"
+                  disabled={!isAccessible}
+                  onClick={() => { if (isAccessible) setCurrentStep(step.num); }}
+                  className={`flex items-center gap-2 p-2 sm:p-2.5 rounded-xl border transition-all text-left ${
+                    isCurrent
+                      ? 'bg-[#1E90FF] border-[#1E90FF] text-white shadow-md'
+                      : isCompleted || isAccessible
+                      ? 'bg-slate-800/90 border-emerald-500/40 text-emerald-300 cursor-pointer hover:border-emerald-400'
+                      : 'bg-slate-800/40 border-slate-700/60 text-slate-500 cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                    isCurrent
+                      ? 'bg-white text-[#1E90FF]'
+                      : isCompleted
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-slate-700 text-slate-300'
+                  }`}>
+                    {isCompleted ? '✓' : step.num}
+                  </div>
+                  <span className="hidden sm:inline truncate">{step.title}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -266,91 +283,67 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
           </div>
         )}
 
-        {/* STEP 1: SELECT DOCTOR */}
+        {/* STEP 1: SELECT DOCTOR — Column list of Doctor buttons */}
         {currentStep === 1 && (
-          <div className="space-y-6 animate-in fade-in duration-300">
+          <div className="space-y-5 animate-in fade-in duration-300">
             <div>
-              <h3 className="text-xl font-bold text-slate-900 mb-1">Step 1: Select Specialist Doctor</h3>
-              <p className="text-sm text-slate-500">
-                Choose the qualified consultant you would like to book an outpatient consultation with.
-              </p>
+              <h3 className="text-lg font-bold text-slate-900 mb-0.5">Select Consultant Doctor</h3>
+              <p className="text-sm text-slate-500">Click on any doctor below to proceed to date selection.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-3">
               {doctors.map(doctor => {
                 const isSelected = selectedDoctorId === doctor.id;
                 return (
-                  <div
+                  <button
                     key={doctor.id}
+                    type="button"
                     onClick={() => {
                       setSelectedDoctorId(doctor.id);
                       setSelectedDate('');
                       setSelectedTime('');
                       setErrorMessage(null);
+                      setCurrentStep(2);
                     }}
-                    className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all duration-200 flex flex-col justify-between ${
+                    className={`w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl border-2 transition-all duration-200 text-left group cursor-pointer ${
                       isSelected
-                        ? 'border-[#1E90FF] bg-blue-50/40 shadow-md ring-2 ring-blue-400/20'
-                        : 'border-slate-200 hover:border-blue-200 bg-white hover:bg-slate-50/50'
+                        ? 'border-[#1E90FF] bg-blue-50/80 shadow-md ring-2 ring-blue-200'
+                        : 'border-slate-200/90 bg-white hover:border-[#1E90FF] hover:bg-blue-50/40 hover:shadow-md'
                     }`}
                   >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#1E90FF] bg-blue-100/70 px-2 py-0.5 rounded-md">
-                          {doctor.specialty}
-                        </span>
-                        {isSelected && (
-                          <CheckCircle2 className="w-5 h-5 text-[#1E90FF]" />
-                        )}
+                    <div className="flex items-center gap-4">
+                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-base transition-colors shrink-0 ${
+                        isSelected
+                          ? 'bg-[#1E90FF] text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-700 group-hover:bg-[#1E90FF] group-hover:text-white'
+                      }`}>
+                        <Stethoscope className="w-5 h-5" />
                       </div>
-                      <h4 className="text-base font-bold text-slate-900 leading-snug">
-                        {doctor.name}
-                      </h4>
-                      {doctor.qualification && (
-                        <p className="text-xs font-semibold text-slate-500 mt-0.5 flex items-center gap-1">
-                          <Award className="w-3.5 h-3.5 text-[#1E90FF]" />
-                          {doctor.qualification}
-                        </p>
-                      )}
+                      <div>
+                        <div className="text-base font-bold text-slate-900 group-hover:text-[#1E90FF] transition-colors">
+                          {doctor.name}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500 mt-0.5">
+                          <span className="text-[#1E90FF] font-bold">{doctor.specialty}</span>
+                          {doctor.qualification && (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className="text-slate-600">{doctor.qualification}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
-
-                    <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600 space-y-1">
-                      {doctor.id === 'doc-zubair' && (
-                        <div>
-                          <span className="font-semibold text-slate-800">Schedule:</span> Mon–Sat (Morn 9-2, Eve 5-8)
-                        </div>
-                      )}
-                      {doctor.id === 'doc-fozia' && (
-                        <div>
-                          <span className="font-semibold text-slate-800">Schedule:</span> Mon–Sat (9:00 AM – 2:00 PM)
-                        </div>
-                      )}
-                      {doctor.id === 'doc-arshad' && (
-                        <div className="text-amber-800 font-semibold bg-amber-50 px-2 py-1 rounded-md border border-amber-200/60">
-                          Available: Every Saturday Only (9:00 AM – 3:00 PM)
-                        </div>
-                      )}
-                      {doctor.id === 'doc-umar' && (
-                        <div>
-                          <span className="font-semibold text-slate-800">Schedule:</span> Mon–Sat (5:00 PM – 8:00 PM)
-                        </div>
-                      )}
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                      isSelected
+                        ? 'bg-[#1E90FF] text-white'
+                        : 'bg-slate-100 text-slate-400 group-hover:bg-[#1E90FF] group-hover:text-white'
+                    }`}>
+                      <ChevronRight className="w-4 h-4" />
                     </div>
-                  </div>
+                  </button>
                 );
               })}
-            </div>
-
-            <div className="pt-6 flex justify-end">
-              <button
-                type="button"
-                disabled={!selectedDoctorId}
-                onClick={() => setCurrentStep(2)}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-slate-950 bg-gradient-to-r from-[#FFD700] to-[#FFDF33] hover:brightness-105 shadow-md shadow-amber-400/20 transition-all border border-amber-300 disabled:opacity-50"
-              >
-                <span>Continue to Date Selection</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
             </div>
           </div>
         )}
@@ -410,26 +403,10 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
               </p>
             </div>
 
-            <div className="pt-6 flex items-center justify-between border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(1)}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Back</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={!selectedDate || !isDateSelectable(selectedDate)}
-                onClick={() => setCurrentStep(3)}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-slate-950 bg-gradient-to-r from-[#FFD700] to-[#FFDF33] hover:brightness-105 shadow-md shadow-amber-400/20 transition-all border border-amber-300 disabled:opacity-50"
-              >
-                <span>Continue to Time Slot</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+            {/* Auto-advance hint */}
+            <p className="text-xs text-slate-400 italic">
+              Pick a valid date above and you'll be taken to time slot selection automatically.
+            </p>
           </div>
         )}
 
@@ -480,7 +457,10 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
                             key={slot.time}
                             type="button"
                             disabled={!slot.isAvailable}
-                            onClick={() => setSelectedTime(slot.time)}
+                            onClick={() => {
+                              setSelectedTime(slot.time);
+                              setCurrentStep(4);
+                            }}
                             className={`p-3 rounded-xl border text-xs font-bold text-center transition-all ${
                               isSelected
                                 ? 'bg-[#1E90FF] border-[#1E90FF] text-white shadow-md scale-102 ring-2 ring-blue-300'
@@ -521,7 +501,10 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
                             key={slot.time}
                             type="button"
                             disabled={!slot.isAvailable}
-                            onClick={() => setSelectedTime(slot.time)}
+                            onClick={() => {
+                              setSelectedTime(slot.time);
+                              setCurrentStep(4);
+                            }}
                             className={`p-3 rounded-xl border text-xs font-bold text-center transition-all ${
                               isSelected
                                 ? 'bg-[#1E90FF] border-[#1E90FF] text-white shadow-md scale-102 ring-2 ring-blue-300'
@@ -553,26 +536,10 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
               </div>
             )}
 
-            <div className="pt-6 flex items-center justify-between border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(2)}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Back</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={!selectedTime}
-                onClick={() => setCurrentStep(4)}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-slate-950 bg-gradient-to-r from-[#FFD700] to-[#FFDF33] hover:brightness-105 shadow-md shadow-amber-400/20 transition-all border border-amber-300 disabled:opacity-50"
-              >
-                <span>Continue to Patient Details</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+            {/* Auto-advance hint */}
+            <p className="text-xs text-slate-400 italic">
+              Select a time slot above to continue to patient details automatically.
+            </p>
           </div>
         )}
 
@@ -671,14 +638,13 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
               {/* Email Address */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-800">
-                  Email Address <span className="text-rose-500">*</span>
+                  Email Address <span className="text-slate-400 font-normal">(Optional)</span>
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
                     type="email"
-                    required
-                    placeholder="e.g. patient@example.com"
+                    placeholder="e.g. patient@example.com (optional)"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-[#1E90FF] focus:border-[#1E90FF] transition-all"
@@ -735,17 +701,8 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
               </div>
             </div>
 
-            {/* Submit & Navigation */}
-            <div className="pt-6 flex items-center justify-between border-t border-slate-100">
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={() => setCurrentStep(3)}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Back</span>
-              </button>
+            {/* Submit */}
+            <div className="pt-6 flex items-center justify-end border-t border-slate-100">
 
               <button
                 type="submit"

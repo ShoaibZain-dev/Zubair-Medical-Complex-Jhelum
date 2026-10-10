@@ -1,10 +1,15 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
-import { Phone, Calendar, Search, ShieldCheck, HeartPulse } from 'lucide-react';
+import { Phone, Calendar, Search, ShieldCheck, HeartPulse, FlaskConical, ExternalLink } from 'lucide-react';
 import SocialSection from './SocialSection';
 import LocationSection from './LocationSection';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function Footer() {
+  const { t } = useLanguage();
+
   return (
     <footer className="bg-slate-900 text-slate-300 no-print">
       {/* Location Section */}
@@ -28,18 +33,18 @@ export default function Footer() {
               </div>
               <div>
                 <span className="block font-bold text-white text-base leading-tight">
-                  Zubair Medical Complex
+                  {t('hospital_name')}
                 </span>
                 <span className="text-xs text-[#00BFFF] font-semibold tracking-wider uppercase">
-                  Kala Gujran, Jhelum, Punjab, Pakistan
+                  {t('hospital_address')}
                 </span>
               </div>
             </div>
             <p className="text-xs text-[#FFD700] font-semibold italic">
-              "Your Health, our Expertise"
+              "{t('hospital_tagline')}"
             </p>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Professional healthcare and specialist consultation in Jhelum. Dedicated to providing patient-centered clinical care and trusted outpatient appointments.
+              {t('hospital_desc')}
             </p>
           </div>
 
@@ -47,38 +52,49 @@ export default function Footer() {
           <div>
             <h4 className="text-white text-sm font-bold tracking-wider uppercase mb-4 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#1E90FF]"></span>
-              Quick Navigation
+              {t('quick_navigation')}
             </h4>
             <ul className="space-y-2.5 text-sm">
               <li>
                 <Link href="/" className="hover:text-white transition-colors hover:translate-x-1 inline-block duration-150">
-                  Home
+                  {t('nav_home')}
                 </Link>
               </li>
               <li>
                 <Link href="/doctors" className="hover:text-white transition-colors hover:translate-x-1 inline-block duration-150">
-                  Doctors Directory
+                  {t('nav_doctors')}
                 </Link>
               </li>
               <li>
                 <Link href="/appointments/book" className="hover:text-white transition-colors hover:translate-x-1 inline-block duration-150">
-                  Book Appointment
+                  {t('btn_book_appointment')}
                 </Link>
               </li>
               <li>
                 <Link href="/appointments/status" className="hover:text-white transition-colors hover:translate-x-1 inline-block duration-150">
-                  Check Appointment Status
+                  {t('nav_check_status')}
                 </Link>
               </li>
               <li>
                 <Link href="/about" className="hover:text-white transition-colors hover:translate-x-1 inline-block duration-150">
-                  About Complex
+                  {t('nav_about')}
                 </Link>
               </li>
               <li>
                 <Link href="/contact" className="hover:text-white transition-colors hover:translate-x-1 inline-block duration-150">
-                  Contact Information
+                  {t('nav_contact')}
                 </Link>
+              </li>
+              <li>
+                <a
+                  href="http://labwithali.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#FFD700] text-emerald-400 transition-colors hover:translate-x-1 inline-flex items-center gap-1.5 duration-150 font-medium"
+                >
+                  <FlaskConical className="w-3.5 h-3.5 text-[#FFD700]" />
+                  Partner Lab: Lab With Ali
+                </a>
               </li>
             </ul>
           </div>
@@ -87,10 +103,10 @@ export default function Footer() {
           <div>
             <h4 className="text-white text-sm font-bold tracking-wider uppercase mb-4 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#FFD700]"></span>
-              Official Contacts
+              {t('official_contacts')}
             </h4>
             <p className="text-xs text-slate-400 mb-3">
-              For consultation schedules and appointment reservations, call our desk directly:
+              {t('contacts_desc')}
             </p>
             <div className="space-y-3">
               {/* Main Hospital Contact */}
@@ -125,7 +141,7 @@ export default function Footer() {
                 </div>
               </a>
 
-              {/* Doctors' Consultation Phone Lines (Unchanged) */}
+              {/* Doctors' Consultation Phone Lines */}
               <a
                 href="tel:03183621341"
                 className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/80 border border-slate-700/60 hover:border-[#1E90FF] hover:bg-slate-800 transition-all text-white group"
@@ -154,30 +170,52 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Staff & Security */}
-          <div>
-            <h4 className="text-white text-sm font-bold tracking-wider uppercase mb-4 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              Clinical Access
-            </h4>
-            <p className="text-xs text-slate-400 mb-4">
-              Authorized clinical staff and receptionists can access the administrative booking portal below:
-            </p>
-            <Link
-              href="/admin/login"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-all"
-            >
-              <ShieldCheck className="w-4 h-4 text-[#1E90FF]" />
-              Staff & Reception Login
-            </Link>
+          {/* Staff & Security & Diagnostic Partner */}
+          <div className="space-y-6">
+            <div>
+              <h4 className="text-white text-sm font-bold tracking-wider uppercase mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                {t('clinical_access')}
+              </h4>
+              <p className="text-xs text-slate-400 mb-3 leading-relaxed">
+                {t('clinical_access_desc')}
+              </p>
+              <Link
+                href="/admin/login"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-all shadow-xs"
+              >
+                <ShieldCheck className="w-4 h-4 text-[#1E90FF]" />
+                {t('btn_staff_login')}
+              </Link>
+            </div>
+
+            <div className="pt-4 border-t border-slate-800/80">
+              <h4 className="text-white text-sm font-bold tracking-wider uppercase mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#FFD700]"></span>
+                {t('diagnostic_partner')}
+              </h4>
+              <p className="text-xs text-slate-400 mb-3 leading-relaxed">
+                {t('diagnostic_desc')}
+              </p>
+              <a
+                href="http://labwithali.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-[#FFD700] hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-[#FFD700]/30 hover:border-[#FFD700] transition-all shadow-xs group"
+              >
+                <FlaskConical className="w-4 h-4 text-[#FFD700]" />
+                <span>Lab With Ali</span>
+                <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-white ml-auto" />
+              </a>
+            </div>
           </div>
         </div>
 
         {/* Bottom copyright */}
         <div className="pt-8 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
-          <p>© Zubair Medical Complex Jhelum. All rights reserved.</p>
+          <p>{t('copyright')}</p>
           <p className="text-slate-400">
-            Professional Healthcare & Specialist Consultation
+            {t('footer_subtext')}
           </p>
         </div>
       </div>

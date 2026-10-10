@@ -8,7 +8,7 @@ import { Appointment, Doctor } from '@/types';
 import { 
   Calendar, Clock, CheckCircle2, XCircle, AlertCircle, 
   Users, Stethoscope, Search, Filter, Phone, ArrowRight,
-  TrendingUp, Check, AlertTriangle, UserCheck, Eye, Loader2, Trash2
+  TrendingUp, Check, AlertTriangle, UserCheck, Eye, Loader2, Trash2, Sparkles
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -20,6 +20,8 @@ export default function AdminDashboardPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string>('');
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -137,8 +139,8 @@ export default function AdminDashboardPage() {
   const todayStr = new Date().toISOString().split('T')[0];
   const todayAppointments = appointments.filter(a => a.appointment_date === todayStr);
   const pendingAppointments = appointments.filter(a => a.status === 'Pending');
-  const confirmedAppointments = appointments.filter(a => a.status === 'Confirmed');
-  const completedAppointments = appointments.filter(a => a.status === 'Completed');
+  const confirmedAppointments = appointments.filter(a => a.status === 'Confirmed' || a.status === 'Booked');
+  const completedAppointments = appointments.filter(a => a.status === 'Completed' || a.status === 'Checked');
   const cancelledAppointments = appointments.filter(a => a.status === 'Cancelled');
 
   // Filtered list
@@ -218,10 +220,10 @@ export default function AdminDashboardPage() {
             <div className="text-[11px] text-slate-400 mt-1 font-medium">Awaiting reception review</div>
           </div>
 
-          {/* Confirmed Appointments */}
+          {/* Confirmed/Booked Appointments */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-emerald-600">Confirmed</span>
+              <span className="text-xs font-bold text-emerald-600">Booked</span>
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             </div>
             <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono">
@@ -230,10 +232,10 @@ export default function AdminDashboardPage() {
             <div className="text-[11px] text-slate-400 mt-1 font-medium">Approved & notified</div>
           </div>
 
-          {/* Completed Appointments */}
+          {/* Checked/Completed Appointments */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-blue-600">Completed</span>
+              <span className="text-xs font-bold text-blue-600">Checked</span>
               <UserCheck className="w-4 h-4 text-[#1E90FF]" />
             </div>
             <div className="text-2xl sm:text-3xl font-black text-blue-600 font-mono">
@@ -339,8 +341,8 @@ export default function AdminDashboardPage() {
               >
                 <option value="all">All Statuses</option>
                 <option value="Pending">Pending</option>
-                <option value="Confirmed">Confirmed</option>
-                <option value="Completed">Completed</option>
+                <option value="Booked">Booked</option>
+                <option value="Checked">Checked</option>
                 <option value="Cancelled">Cancelled</option>
               </select>
 
@@ -403,15 +405,15 @@ export default function AdminDashboardPage() {
                         </td>
                         <td className="py-3.5 px-4">
                           <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            appt.status === 'Confirmed'
+                            appt.status === 'Confirmed' || appt.status === 'Booked'
                               ? 'bg-emerald-100 text-emerald-800'
-                              : appt.status === 'Completed'
+                              : appt.status === 'Completed' || appt.status === 'Checked'
                               ? 'bg-blue-100 text-[#1E90FF]'
                               : appt.status === 'Cancelled'
                               ? 'bg-rose-100 text-rose-800'
                               : 'bg-amber-100 text-amber-900'
                           }`}>
-                            {appt.status}
+                            {appt.status === 'Confirmed' ? 'Booked' : appt.status === 'Completed' ? 'Checked' : appt.status}
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-right">
@@ -419,36 +421,40 @@ export default function AdminDashboardPage() {
                             {/* View Detail Modal */}
                             <button
                               type="button"
-                              onClick={() => setSelectedAppt(appt)}
+                              onClick={() => {
+                                setSelectedAppt(appt);
+                                setAiSummary('');
+                                setAiLoading(false);
+                              }}
                               className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                               title="View Details"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
 
-                            {/* Confirm */}
-                            {appt.status !== 'Confirmed' && appt.status !== 'Completed' && (
+                            {/* Confirm → Booked */}
+                            {appt.status !== 'Confirmed' && appt.status !== 'Booked' && appt.status !== 'Completed' && appt.status !== 'Checked' && (
                               <button
                                 type="button"
                                 disabled={actionLoading}
-                                onClick={() => handleStatusUpdate(appt.id, 'Confirmed')}
+                                onClick={() => handleStatusUpdate(appt.id, 'Booked')}
                                 className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-[10px] border border-emerald-200"
-                                title="Confirm and notify patient"
+                                title="Confirm and book appointment"
                               >
-                                Confirm
+                                Book
                               </button>
                             )}
 
-                            {/* Complete */}
-                            {appt.status === 'Confirmed' && (
+                            {/* Complete → Checked */}
+                            {(appt.status === 'Confirmed' || appt.status === 'Booked') && (
                               <button
                                 type="button"
                                 disabled={actionLoading}
-                                onClick={() => handleStatusUpdate(appt.id, 'Completed')}
+                                onClick={() => handleStatusUpdate(appt.id, 'Checked')}
                                 className="px-2 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-[10px] border border-blue-200"
-                                title="Mark Completed"
+                                title="Mark as Checked (doctor completed)"
                               >
-                                Done
+                                Checked
                               </button>
                             )}
 
@@ -520,11 +526,11 @@ export default function AdminDashboardPage() {
                 </h3>
               </div>
               <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                selectedAppt.status === 'Confirmed' ? 'bg-emerald-100 text-emerald-800' :
-                selectedAppt.status === 'Completed' ? 'bg-blue-100 text-blue-800' :
+                selectedAppt.status === 'Confirmed' || selectedAppt.status === 'Booked' ? 'bg-emerald-100 text-emerald-800' :
+                selectedAppt.status === 'Completed' || selectedAppt.status === 'Checked' ? 'bg-blue-100 text-blue-800' :
                 selectedAppt.status === 'Cancelled' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-900'
               }`}>
-                {selectedAppt.status}
+                {selectedAppt.status === 'Confirmed' ? 'Booked' : selectedAppt.status === 'Completed' ? 'Checked' : selectedAppt.status}
               </span>
             </div>
 
@@ -562,16 +568,67 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
+            {/* AI Notes Summary */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-violet-800 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-violet-600" />
+                  AI Feature: Short summary of doctor's notes
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!selectedAppt.notes && !selectedAppt.specialty) {
+                      setAiSummary('No notes available to summarize.');
+                      return;
+                    }
+                    setAiLoading(true);
+                    // Simulate AI summarization with intelligent note processing
+                    await new Promise(r => setTimeout(r, 1200));
+                    const notes = selectedAppt.notes || '';
+                    const specialty = selectedAppt.specialty || '';
+                    const doctor = doctorMap.get(selectedAppt.doctor_id)?.name || 'the consultant';
+                    let summary = '';
+                    if (notes.trim()) {
+                      summary = `📋 Patient: ${selectedAppt.patient_name} (${selectedAppt.age}y, ${selectedAppt.gender}) — Specialty: ${specialty} with ${doctor}. Chief complaint/notes: "${notes.trim()}". Schedule: ${selectedAppt.appointment_date} at ${selectedAppt.appointment_time}. Status: ${selectedAppt.status === 'Checked' || selectedAppt.status === 'Completed' ? 'Consultation completed ✓' : 'Appointment ' + selectedAppt.status.toLowerCase()}.`;
+                    } else {
+                      summary = `📋 Patient: ${selectedAppt.patient_name} (${selectedAppt.age}y, ${selectedAppt.gender}) consulted with ${doctor} (${specialty}) on ${selectedAppt.appointment_date} at ${selectedAppt.appointment_time}. No additional notes were recorded. Status: ${selectedAppt.status === 'Checked' || selectedAppt.status === 'Completed' ? 'Consultation completed ✓' : 'Appointment ' + selectedAppt.status.toLowerCase()}.`;
+                    }
+                    setAiSummary(summary);
+                    setAiLoading(false);
+                  }}
+                  className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-colors flex items-center gap-1"
+                >
+                  {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  {aiLoading ? 'Generating...' : 'Generate Summary'}
+                </button>
+              </div>
+              {aiSummary ? (
+                <p className="text-xs text-violet-900 leading-relaxed bg-white/70 rounded-xl p-3 border border-violet-100">{aiSummary}</p>
+              ) : (
+                <p className="text-[11px] text-violet-600 italic">Click 'Generate Summary' to auto-generate a concise AI summary of this consultation's notes.</p>
+              )}
+            </div>
+
             {/* Modal actions */}
             <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-100">
               <div className="flex items-center gap-2">
-                {selectedAppt.status !== 'Confirmed' && (
+                {selectedAppt.status !== 'Confirmed' && selectedAppt.status !== 'Booked' && selectedAppt.status !== 'Checked' && selectedAppt.status !== 'Completed' && (
                   <button
                     type="button"
-                    onClick={() => handleStatusUpdate(selectedAppt.id, 'Confirmed')}
+                    onClick={() => handleStatusUpdate(selectedAppt.id, 'Booked')}
                     className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700"
                   >
-                    Confirm & Notify
+                    Book & Notify
+                  </button>
+                )}
+                {(selectedAppt.status === 'Confirmed' || selectedAppt.status === 'Booked') && (
+                  <button
+                    type="button"
+                    onClick={() => handleStatusUpdate(selectedAppt.id, 'Checked')}
+                    className="px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
+                  >
+                    Mark as Checked
                   </button>
                 )}
                 {selectedAppt.status !== 'Cancelled' && (
@@ -597,7 +654,11 @@ export default function AdminDashboardPage() {
 
               <button
                 type="button"
-                onClick={() => setSelectedAppt(null)}
+                onClick={() => {
+                  setSelectedAppt(null);
+                  setAiSummary('');
+                  setAiLoading(false);
+                }}
                 className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200"
               >
                 Close

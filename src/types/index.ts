@@ -1,6 +1,6 @@
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 
-export type AppointmentStatus = 'Pending' | 'Confirmed' | 'Completed' | 'Cancelled';
+export type AppointmentStatus = 'Pending' | 'Confirmed' | 'Booked' | 'Completed' | 'Checked' | 'Cancelled';
 
 export type UserRole = 'Admin' | 'Receptionist';
 
@@ -74,10 +74,20 @@ export interface NotificationLog {
   id: string;
   appointment_id: string;
   recipient_type: 'patient' | 'hospital';
+  /** Phone number for WhatsApp/SMS, or email address for email channel */
   recipient_number: string;
   event: 'new_appointment' | 'confirmed' | 'cancelled' | 'status_update';
-  channel: 'whatsapp' | 'sms' | 'mock';
+  channel: 'whatsapp' | 'sms' | 'email' | 'mock';
   message: string;
-  status: 'sent' | 'failed' | 'simulated';
+  status: 'sent' | 'delivered' | 'failed' | 'simulated' | 'pending';
+  error_details?: string;
   timestamp: string;
+}
+
+/** Per-channel result so one failure doesn't mask others */
+export interface MultiChannelNotificationResult {
+  staff_email: { status: 'sent' | 'failed' | 'skipped'; error?: string };
+  staff_whatsapp: { status: 'sent' | 'failed' | 'skipped'; error?: string };
+  patient_email: { status: 'sent' | 'failed' | 'skipped'; error?: string };
+  patient_whatsapp: { status: 'sent' | 'failed' | 'skipped'; error?: string };
 }
