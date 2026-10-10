@@ -1,0 +1,85 @@
+# Contact | Zubair Medical Complex Jhelum
+
+[+92 315 6621341](tel:+923156621341)
+[0318-3621341](tel:03183621341)
+[WhatsApp: +92 315 6621341](https://wa.me/923156621341)
+[Check Status](http://localhost:3000/appointments/status)
+[Staff Login](http://localhost:3000/admin/login)
+[Zubair Medical ComplexKala Gujran, Jhelum, Punjab, Pakistan](http://localhost:3000/)
+[Home](http://localhost:3000/)
+[Doctors](http://localhost:3000/doctors)
+[Appointments](http://localhost:3000/appointments/book)
+[About](http://localhost:3000/about)
+[Contact](http://localhost:3000/contact)
+[Check Appointment](http://localhost:3000/appointments/status)
+[Book Appointment](http://localhost:3000/appointments/book)
+[Book Now](http://localhost:3000/appointments/book)
+
+# Zubair Medical Complex
+Kala Gujran, Jhelum, Punjab, Pakistan
+For outpatient appointment scheduling, doctor availability inquiries, and confirmation status, please reach out to our official desk lines below.
+
+## +92 315 6621341
+Main reception and appointment coordination line for Zubair Medical Complex (Kala Gujran, Jhelum, Punjab, Pakistan).
+[Call Hospital Contact](tel:+923156621341)
+[WhatsApp Chat](https://wa.me/923156621341)
+
+### Doctor Consultation & Specialist Lines
+
+#### 0318-3621341
+Direct consultation line for Dr. Syed Zubair Younis, Dr. Fozia Choudhary, and Dr. Umar Farooq.
+[Call Doctors Line](tel:03183621341)
+
+#### 0300-3918459
+Direct consultation line for Dr. Muhammad Arshad (Rheumatologist - Saturday clinics).
+[Call Specialist Line](tel:03003918459)
+
+### Prefer Online Appointment Booking?
+Select your doctor, pick your preferred date and time slot, and submit patient details in under two minutes.
+[Book Appointment](http://localhost:3000/appointments/book)
+[Check Status](http://localhost:3000/appointments/status)
+
+## Find Us on the Map
+Visit Zubair Medical Complex for outpatient specialist consultations and clinical healthcare services.
+
+### Zubair Medical Complex
+Kala Gujran, Jhelum, Punjab, Pakistan
+Easily accessible medical complex in Kala Gujran, Jhelum. Dedicated clinical facilities for specialist consultations and patient care.
+[Get Directions](https://maps.app.goo.gl/nK3fJt1X6o5zNmK87)
+[Open in Google Maps](https://maps.app.goo.gl/nK3fJt1X6o5zNmK87)
+
+### Follow Zubair Medical Complex Jhelum
+Stay connected with our consultant announcements, health advisories, and clinic updates across our official social channels.
+[Facebook](https://www.facebook.com/search/top?q=zubair%20medical%20complex%20jhelum)
+[Instagram](https://www.instagram.com/explore/tags/zubairmedicalcomplexjhelum/)
+[YouTube](https://www.youtube.com/results?search_query=zubair+medical+complex+jhelum)
+[WhatsApp](https://wa.me/923156621341)
+"Your Health, our Expertise"
+Professional healthcare and specialist consultation in Jhelum. Dedicated to providing patient-centered clinical care and trusted outpatient appointments.
+
+#### Quick Navigation
+- [Home](http://localhost:3000/)
+- [Doctors Directory](http://localhost:3000/doctors)
+- [Book Appointment](http://localhost:3000/appointments/book)
+- [Check Appointment Status](http://localhost:3000/appointments/status)
+- [About Complex](http://localhost:3000/about)
+- [Contact Information](http://localhost:3000/contact)
+[Home](http://localhost:3000/)
+[Doctors Directory](http://localhost:3000/doctors)
+[Book Appointment](http://localhost:3000/appointments/book)
+[Check Appointment Status](http://localhost:3000/appointments/status)
+[About Complex](http://localhost:3000/about)
+[Contact Information](http://localhost:3000/contact)
+
+#### Official Contacts
+For consultation schedules and appointment reservations, call our desk directly:
+[Hospital Main Contact+92 315 6621341](tel:+923156621341)
+[Official WhatsApp+92 315 6621341](https://wa.me/923156621341)
+[Doctors Desk (Zubair/Fozia/Umar)0318-3621341](tel:03183621341)
+[Doctor Desk (Dr. Arshad)0300-3918459](tel:03003918459)
+
+#### Clinical Access
+Authorized clinical staff and receptionists can access the administrative booking portal below:
+[Staff & Reception Login](http://localhost:3000/admin/login)
+© Zubair Medical Complex Jhelum. All rights reserved.
+Professional Healthcare & Specialist Consultation
