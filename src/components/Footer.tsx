@@ -24,11 +24,11 @@ export default function Footer() {
           {/* Hospital Identity */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-700 bg-white shrink-0">
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-700 bg-white shrink-0 flex items-center justify-center p-0.5">
                 <img
                   src="/logo.png"
                   alt="Zubair Medical Complex Jhelum"
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain object-center"
                 />
               </div>
               <div>
@@ -118,8 +118,10 @@ export default function Footer() {
                   <Phone className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs text-slate-400">Hospital Main Contact</div>
-                  <div className="text-sm font-bold font-mono text-white">+92 315 6621341</div>
+                  <div className="text-xs text-slate-400">
+                    {t('label_hospital')}
+                  </div>
+                  <div className="text-sm font-bold font-mono text-white phone-number">+92 315 6621341</div>
                 </div>
               </a>
 
@@ -136,8 +138,10 @@ export default function Footer() {
                   </svg>
                 </div>
                 <div>
-                  <div className="text-xs text-slate-400">Official WhatsApp</div>
-                  <div className="text-sm font-bold font-mono text-emerald-400">+92 315 6621341</div>
+                  <div className="text-xs text-slate-400">
+                    {t('label_whatsapp')}
+                  </div>
+                  <div className="text-sm font-bold font-mono text-emerald-400 phone-number">+92 315 6621341</div>
                 </div>
               </a>
 
@@ -150,8 +154,8 @@ export default function Footer() {
                   <Phone className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs text-slate-400">Doctors Desk (Zubair/Fozia/Umar)</div>
-                  <div className="text-sm font-bold font-mono">0318-3621341</div>
+                  <div className="text-xs text-slate-400">{t('label_doctor_desks')}</div>
+                  <div className="text-sm font-bold font-mono phone-number">0318-3621341</div>
                 </div>
               </a>
 
@@ -163,8 +167,8 @@ export default function Footer() {
                   <Phone className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs text-slate-400">Doctor Desk (Dr. Arshad)</div>
-                  <div className="text-sm font-bold font-mono">0300-3918459</div>
+                  <div className="text-xs text-slate-400">{t('doc_arshad_name')}</div>
+                  <div className="text-sm font-bold font-mono phone-number">0300-3918459</div>
                 </div>
               </a>
             </div>

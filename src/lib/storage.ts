@@ -326,7 +326,7 @@ export const storage = {
           a.appointment_id.toLowerCase().includes(q) ||
           a.patient_name.toLowerCase().includes(q) ||
           a.phone.toLowerCase().includes(q) ||
-          a.whatsapp.toLowerCase().includes(q)
+          (a.whatsapp || '').toLowerCase().includes(q)
       );
     }
 
@@ -351,7 +351,7 @@ export const storage = {
     return data.appointments.filter(a => {
       const matchId = a.appointment_id.toLowerCase().replace(/[-\s]/g, '').includes(clean);
       const matchPhone = a.phone.replace(/[-\s]/g, '').includes(clean);
-      const matchWa = a.whatsapp.replace(/[-\s]/g, '').includes(clean);
+      const matchWa = (a.whatsapp || '').replace(/[-\s]/g, '').includes(clean);
       return matchId || matchPhone || matchWa;
     });
   },
@@ -536,9 +536,11 @@ export const storage = {
       l =>
         l.appointment_id === appointmentId &&
         l.event === event &&
-        l.channel === channel &&
         l.recipient_type === recipientType &&
-        (l.status === 'sent' || l.status === 'delivered' || l.status === 'simulated')
+        (l.status === 'sent' || l.status === 'delivered' || l.status === 'simulated') &&
+        (channel === 'messaging' || channel === 'whatsapp'
+          ? (l.channel === 'whatsapp' || l.channel === 'sms' || l.channel === 'mock')
+          : l.channel === channel)
     );
   },
 

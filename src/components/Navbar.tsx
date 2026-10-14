@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Phone, Calendar, Menu, X, Shield, Activity, Search, Globe } from 'lucide-react';
+import { Phone, Calendar, Menu, X, Shield, Activity, Search } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function Navbar() {
@@ -28,34 +28,42 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm no-print">
       {/* Top emergency and clinic announcement bar */}
-      <div className="bg-gradient-to-r from-[#1E90FF] to-[#0857AC] text-white text-xs sm:text-sm py-2 px-4">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
-          <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-start">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Activity className="w-4 h-4 text-[#FFD700]" />
-              {t('hospital_name')}
+      <div className="bg-gradient-to-r from-[#1E90FF] to-[#0857AC] text-white text-xs py-1.5 sm:py-2 px-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+          {/* Left: hospital info – hidden on xs, visible sm+ */}
+          <div className="hidden sm:flex items-center gap-3 flex-wrap flex-1 min-w-0">
+            <span className="flex items-center gap-1.5 font-medium shrink-0">
+              <Activity className="w-3.5 h-3.5 text-[#FFD700]" />
+              <span className="hidden md:inline">{t('hospital_name')}</span>
             </span>
             <span className="hidden md:inline text-blue-200">|</span>
-            <span className="flex items-center gap-1.5 text-blue-100">
-              <Phone className="w-3.5 h-3.5 text-[#FFD700]" />
-              {t('label_hospital')}: <a href="tel:+923156621341" className="hover:text-white font-semibold underline decoration-dotted">+92 315 6621341</a>
+            <span className="flex items-center gap-1.5 text-blue-100 text-[11px]">
+              <Phone className="w-3 h-3 text-[#FFD700] shrink-0" />
+              <a href="tel:+923156621341" className="hover:text-white font-semibold underline decoration-dotted whitespace-nowrap">+92 315 6621341</a>
               <span className="text-blue-300">|</span>
-              {t('label_doctors')}: <a href="tel:03183621341" className="hover:text-white font-semibold underline decoration-dotted">0318-3621341</a>
+              <a href="tel:03183621341" className="hover:text-white font-semibold underline decoration-dotted whitespace-nowrap">0318-3621341</a>
             </span>
-            <span className="hidden md:inline text-blue-200">|</span>
+            <span className="hidden lg:inline text-blue-200">|</span>
             <a
               href="https://wa.me/923156621341"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-emerald-300 hover:text-white font-semibold transition-colors"
+              className="hidden lg:flex items-center gap-1.5 text-emerald-300 hover:text-white font-semibold transition-colors text-[11px]"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               {t('label_whatsapp')}: +92 315 6621341
             </a>
           </div>
 
-          <div className="flex items-center gap-3 text-xs">
-            {/* Language Switcher in top bar */}
+          {/* Mobile left: hospital name only */}
+          <div className="flex sm:hidden items-center gap-1.5 font-medium text-[11px] min-w-0">
+            <Activity className="w-3.5 h-3.5 text-[#FFD700] shrink-0" />
+            <span className="truncate">{t('hospital_name')}</span>
+          </div>
+
+          {/* Right: language switcher + utility links */}
+          <div className="flex items-center gap-1.5 sm:gap-3 text-[11px] shrink-0">
+            {/* Language Switcher in top bar – canonical, single toggle */}
             <div className="inline-flex items-center bg-white/15 rounded-full p-0.5 border border-white/25">
               <button
                 type="button"
@@ -83,19 +91,19 @@ export default function Navbar() {
               </button>
             </div>
 
-            <span className="text-blue-300">|</span>
+            <span className="hidden sm:inline text-blue-300">|</span>
 
             <Link
               href="/appointments/status"
-              className="flex items-center gap-1 text-blue-100 hover:text-white transition-colors"
+              className="hidden sm:flex items-center gap-1 text-blue-100 hover:text-white transition-colors"
             >
               <Search className="w-3.5 h-3.5 text-[#FFD700]" />
               {t('btn_check_status')}
             </Link>
-            <span className="text-blue-300">|</span>
+            <span className="hidden sm:inline text-blue-300">|</span>
             <Link
               href="/admin/login"
-              className="flex items-center gap-1 text-blue-200 hover:text-white transition-colors"
+              className="hidden sm:flex items-center gap-1 text-blue-200 hover:text-white transition-colors"
             >
               <Shield className="w-3.5 h-3.5" />
               {t('btn_staff_login')}
@@ -106,21 +114,21 @@ export default function Navbar() {
 
       {/* Main navigation bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
+        <div className="flex justify-between items-center h-16 sm:h-20">
           {/* Logo & Hospital Brand */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-12 h-12 rounded-full overflow-hidden shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200 border-2 border-white bg-white shrink-0">
+          <Link href="/" className="flex items-center gap-2 sm:gap-3 group min-w-0 flex-1 lg:flex-none">
+            <div className="w-9 h-9 xs:w-10 xs:h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200 border-2 border-white bg-white shrink-0 flex items-center justify-center p-0.5">
               <img
                 src="/logo.png"
                 alt="Zubair Medical Complex Jhelum"
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain object-center"
               />
             </div>
-            <div>
-              <span className="block font-bold text-lg sm:text-xl text-slate-900 tracking-tight leading-none group-hover:text-[#1E90FF] transition-colors">
+            <div className="min-w-0 flex-1 lg:flex-none flex flex-col justify-center">
+              <span className="block font-extrabold text-[13px] xs:text-sm sm:text-base md:text-lg lg:text-xl text-slate-900 tracking-tight leading-tight group-hover:text-[#1E90FF] transition-colors truncate">
                 {t('hospital_name')}
               </span>
-              <span className="text-xs font-semibold text-[#4682B4] tracking-wider uppercase block mt-0.5">
+              <span className="block text-[8.5px] xs:text-[9.5px] sm:text-[11px] lg:text-xs font-semibold text-[#4682B4] tracking-normal sm:tracking-wider uppercase mt-0.5 leading-tight truncate">
                 {t('hospital_address')}
               </span>
             </div>
@@ -143,19 +151,8 @@ export default function Navbar() {
             ))}
           </nav>
 
-          {/* Prominent CTA & Language Button */}
-          <div className="hidden sm:flex items-center gap-3">
-            {/* Quick Language Toggle Pill */}
-            <button
-              type="button"
-              onClick={() => setLanguage(language === 'en' ? 'ur' : 'en')}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-[#1E90FF] transition-all"
-              title="Toggle Language / زبان تبدیل کریں"
-            >
-              <Globe className="w-3.5 h-3.5 text-[#1E90FF]" />
-              <span>{language === 'en' ? 'اردو' : 'EN'}</span>
-            </button>
-
+          {/* Desktop CTA - Book Appointment only (language toggle is in top bar) */}
+          <div className="hidden lg:flex items-center gap-3">
             <Link
               href="/appointments/book"
               className="relative inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-slate-950 bg-gradient-to-r from-[#FFD700] via-[#FFDF33] to-[#FFD700] hover:brightness-105 shadow-md shadow-amber-400/25 hover:shadow-lg hover:shadow-amber-400/35 transition-all duration-200 active:scale-95 border border-amber-300"
@@ -165,21 +162,31 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Mobile hamburger button */}
-          <div className="flex items-center gap-2 lg:hidden">
-            <button
-              type="button"
-              onClick={() => setLanguage(language === 'en' ? 'ur' : 'en')}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-slate-50 text-slate-800"
-            >
-              {language === 'en' ? 'اردو' : 'EN'}
-            </button>
-
+          {/* Tablet CTA (sm-lg) */}
+          <div className="hidden sm:flex lg:hidden items-center gap-2">
             <Link
               href="/appointments/book"
-              className="sm:hidden px-3 py-1.5 rounded-lg text-xs font-bold text-slate-950 bg-[#FFD700] shadow-sm"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs text-slate-950 bg-[#FFD700] shadow-sm border border-amber-300"
             >
-              {language === 'en' ? 'Book' : 'بک کریں'}
+              <Calendar className="w-3.5 h-3.5 text-slate-900" />
+              <span>{t('btn_book_appointment')}</span>
+            </Link>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
+
+          {/* Mobile hamburger button (< sm) */}
+          <div className="flex items-center gap-1.5 sm:hidden">
+            <Link
+              href="/appointments/book"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-950 bg-[#FFD700] shadow-sm whitespace-nowrap"
+            >
+              {language === 'en' ? 'Book' : 'بک'}
             </Link>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

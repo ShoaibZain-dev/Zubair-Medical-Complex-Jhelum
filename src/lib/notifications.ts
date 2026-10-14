@@ -1,5 +1,35 @@
-import { Appointment, Doctor, MultiChannelNotificationResult } from '../types';
+﻿import { Appointment, Doctor, MultiChannelNotificationResult } from '../types';
 import { storage } from './storage';
+
+export const HOSPITAL_DEFAULT_NUMBER = '+92 315 6621341';
+
+// ---------------------------------------------------------------------------
+// Pakistani phone number normalizer: converts any local format to E.164
+// e.g.  03001234567  -> +923001234567
+//       3001234567   -> +923001234567
+//       +923001234567 -> +923001234567
+// ---------------------------------------------------------------------------
+export function normalizeToE164(phone: string): string {
+  let digits = phone.replace(/[^\d]/g, '');
+  // Remove leading zero â†’ prepend 92
+  if (digits.startsWith('0') && digits.length === 11) {
+    digits = '92' + digits.slice(1);
+  }
+  // 10-digit starting with 3 (e.g. 3001234567)
+  if (digits.startsWith('3') && digits.length === 10) {
+    digits = '92' + digits;
+  }
+  // Already has country code
+  if (!digits.startsWith('92') && digits.length > 11) {
+    // leave as-is for non-PK numbers
+    return '+' + digits;
+  }
+  if (digits.startsWith('92') && digits.length === 12) {
+    return '+' + digits;
+  }
+  // fallback: just prefix +
+  return '+' + digits;
+}
 
 export interface NotificationPayload {
   event: 'new_appointment' | 'confirmed' | 'cancelled' | 'status_update';
@@ -21,59 +51,116 @@ export interface NotificationResult {
 }
 
 // ---------------------------------------------------------------------------
+// Recipient Validation & Hospital Number Protection
+// ---------------------------------------------------------------------------
+
+export function cleanDigits(num?: string | null): string {
+  if (!num || typeof num !== 'string') return '';
+  return num.replace(/[^0-9]/g, '');
+}
+
+export function isHospitalContactNumber(num?: string | null, hospitalNumber: string = HOSPITAL_DEFAULT_NUMBER): boolean {
+  if (!num || typeof num !== 'string') return false;
+  const digits = cleanDigits(num);
+  if (!digits) return false;
+  const hospDigits = cleanDigits(hospitalNumber);
+  const defHospDigits = cleanDigits(HOSPITAL_DEFAULT_NUMBER);
+  return digits === hospDigits || digits === defHospDigits;
+}
+
+export function isValidPatientRecipientNumber(num?: string | null, hospitalNumber: string = HOSPITAL_DEFAULT_NUMBER): boolean {
+  if (!num || typeof num !== 'string') return false;
+  const trimmed = num.trim();
+  if (!trimmed) return false;
+  const digits = cleanDigits(trimmed);
+  // Phone must be between 10 and 15 digits
+  if (digits.length < 10 || digits.length > 15) return false;
+  // Patient recipient must NEVER be the hospital contact number
+  if (isHospitalContactNumber(trimmed, hospitalNumber)) return false;
+  return true;
+}
+
+// ---------------------------------------------------------------------------
 // Message formatters
 // ---------------------------------------------------------------------------
 
-function formatPatientWhatsAppMessage(payload: NotificationPayload, hospitalContact: string): string {
+export function formatPatientWhatsAppMessage(payload: NotificationPayload, hospitalContact: string): string {
   const { event, appointment, doctor } = payload;
-  const header = `🏥 *Zubair Medical Complex Jhelum*\nAppointment Notification`;
-
-  let eventTitle = '';
-  let statusNote = '';
 
   switch (event) {
     case 'new_appointment':
-      eventTitle = '✅ *Appointment Received (Pending)*';
-      statusNote = 'Your appointment request has been submitted and your status is now Pending. Our team will book your slot shortly.';
-      break;
-    case 'confirmed':
-      eventTitle = '🎉 *Appointment Booked*';
-      statusNote = 'Your appointment is now Booked. Please arrive 10-15 minutes prior to your consultation time.';
-      break;
-    case 'cancelled':
-      eventTitle = '❌ *Appointment Cancelled*';
-      statusNote = 'Your appointment has been cancelled. For queries or rescheduling, please contact the clinic.';
-      break;
-    case 'status_update':
-      eventTitle = `ℹ️ *Appointment Status Update: ${appointment.status}*`;
-      if (appointment.status === 'Checked') {
-        statusNote = 'Your consultation has been Checked (Completed). Thank you for visiting Zubair Medical Complex!';
-      } else {
-        statusNote = `Status has been updated to: ${appointment.status}.`;
-      }
-      break;
-  }
+      return `Assalam-o-Alaikum ${appointment.patient_name},
 
-  return `${header}
-${eventTitle}
+Your appointment request at Zubair Medical Complex Jhelum has been received successfully.
 
-📋 *Appointment Details:*
-• *Appointment ID:* ${appointment.appointment_id}
-• *Patient Name:* ${appointment.patient_name}
-• *Doctor:* ${doctor.name}
-• *Specialty:* ${doctor.specialty}
-• *Appointment Date:* ${appointment.appointment_date}
-• *Appointment Time:* ${appointment.appointment_time}
-• *Status:* ${appointment.status}
+Doctor: ${doctor.name}
+Appointment Date: ${appointment.appointment_date}
+Appointment Time: ${appointment.appointment_time}
+Appointment ID: ${appointment.appointment_id}
+Status: Pending Confirmation
 
-📞 *Hospital Contact:* ${hospitalContact}
-${payload.customNotes ? `\n📝 *Notes:* ${payload.customNotes}` : ''}
-${statusNote}
+Our reception team will review your request and notify you once your appointment is confirmed.
 
 Thank you for choosing Zubair Medical Complex Jhelum.`;
+
+    case 'confirmed':
+      return `Assalam-o-Alaikum ${appointment.patient_name},
+
+Good news! Your appointment at Zubair Medical Complex Jhelum has been confirmed.
+
+Doctor: ${doctor.name}
+Appointment Date: ${appointment.appointment_date}
+Appointment Time: ${appointment.appointment_time}
+Appointment ID: ${appointment.appointment_id}
+Status: Confirmed
+
+Please arrive 10-15 minutes before your appointment.
+
+For assistance, contact Zubair Medical Complex Jhelum at ${hospitalContact}.
+
+Thank you.`;
+
+    case 'cancelled':
+      return `Assalam-o-Alaikum ${appointment.patient_name},
+
+We regret to inform you that your appointment at Zubair Medical Complex Jhelum has been cancelled.
+
+Doctor: ${doctor.name}
+Appointment Date: ${appointment.appointment_date}
+Appointment ID: ${appointment.appointment_id}
+
+For queries or rescheduling, please contact us at ${hospitalContact}.
+
+Thank you for choosing Zubair Medical Complex Jhelum.`;
+
+    default: {
+      const statusLabel = appointment.status;
+      return `Assalam-o-Alaikum ${appointment.patient_name},
+
+Your appointment status at Zubair Medical Complex Jhelum has been updated.
+
+Doctor: ${doctor.name}
+Appointment Date: ${appointment.appointment_date}
+Appointment Time: ${appointment.appointment_time}
+Appointment ID: ${appointment.appointment_id}
+Status: ${statusLabel}
+
+For assistance, contact us at ${hospitalContact}.
+
+Thank you for choosing Zubair Medical Complex Jhelum.`;
+    }
+  }
 }
 
-function formatHospitalWhatsAppMessage(payload: NotificationPayload): string {
+export function formatPatientSMSMessage(payload: NotificationPayload, hospitalContact: string): string {
+  const { event, appointment, doctor } = payload;
+  const isConfirmed = event === 'confirmed' || appointment.status === 'Confirmed' || appointment.status === 'Booked';
+  const statusLabel = isConfirmed ? 'Confirmed' : appointment.status;
+
+  return `Zubair Medical Complex Jhelum: Appointment ${statusLabel}. ID: ${appointment.appointment_id}, Patient: ${appointment.patient_name}, Doctor: ${doctor.name}, Specialty: ${doctor.specialty || appointment.specialty}, Date: ${appointment.appointment_date}, Time: ${appointment.appointment_time}, Status: ${statusLabel}, Hospital Contact: ${hospitalContact}.`;
+}
+
+export function formatHospitalWhatsAppMessage(payload: NotificationPayload): string {
   const { event, appointment, doctor } = payload;
   return `🔔 *Zubair Medical Complex - Reception Alert*
 *Event:* ${event.toUpperCase()}
@@ -82,7 +169,7 @@ function formatHospitalWhatsAppMessage(payload: NotificationPayload): string {
 • *Patient:* ${appointment.patient_name} (Age: ${appointment.age}, Gender: ${appointment.gender})
 • *Phone:* ${appointment.phone} | *WhatsApp:* ${appointment.whatsapp}
 ${appointment.email ? `• *Email:* ${appointment.email}` : ''}
-• *Doctor:* ${doctor.name} (${doctor.specialty})
+• *Doctor:* ${doctor.name} (${doctor.specialty || appointment.specialty})
 • *Date:* ${appointment.appointment_date}
 • *Time:* ${appointment.appointment_time}
 • *Status:* ${appointment.status}
@@ -99,7 +186,7 @@ function formatStaffEmailHtml(payload: NotificationPayload, dashboardUrl: string
     event === 'new_appointment'
       ? 'New Appointment Booking'
       : event === 'confirmed'
-      ? 'Appointment Booked'
+      ? 'Appointment Confirmed'
       : event === 'cancelled'
       ? 'Appointment Cancelled'
       : `Status Update: ${appointment.status}`;
@@ -140,27 +227,27 @@ function formatStaffEmailHtml(payload: NotificationPayload, dashboardUrl: string
               ${appointment.email ? row('Email', appointment.email) : ''}
               ${row('Age / Gender', `${appointment.age} yrs / ${appointment.gender}`)}
               ${row('Doctor', doctor.name)}
-              ${row('Specialty', doctor.specialty)}
+              ${row('Specialty', doctor.specialty || appointment.specialty)}
               ${row('Date', appointment.appointment_date)}
               ${row('Time', appointment.appointment_time)}
-              ${row('Status', `<strong style="color:${appointment.status === 'Booked' ? '#15803d' : appointment.status === 'Checked' ? '#2563eb' : appointment.status === 'Cancelled' ? '#dc2626' : '#92400e'};">${appointment.status}</strong>`)}
+              ${row('Status', `<strong style="color:${appointment.status === 'Booked' || appointment.status === 'Confirmed' ? '#15803d' : appointment.status === 'Checked' ? '#2563eb' : appointment.status === 'Cancelled' ? '#dc2626' : '#92400e'};">${appointment.status}</strong>`)}
               ${appointment.notes ? row('Patient Notes', appointment.notes) : ''}
             </table>
           </td>
         </tr>
-        <!-- Dashboard Link -->
+        <!-- CTA -->
         <tr>
-          <td style="padding:0 40px 28px;text-align:center;">
-            <a href="${dashboardUrl}" style="display:inline-block;background:linear-gradient(135deg,#1E90FF,#1565C0);color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:700;font-size:14px;">
-              Open Receptionist Dashboard →
+          <td style="padding:0 40px 32px;text-align:center;">
+            <a href="${dashboardUrl}" style="display:inline-block;background:#1E90FF;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 32px;border-radius:10px;box-shadow:0 4px 12px rgba(30,144,255,0.3);">
+              View in Admin Dashboard →
             </a>
           </td>
         </tr>
         <!-- Footer -->
         <tr>
           <td style="background:#f8fafc;padding:20px 40px;border-top:1px solid #e2e8f0;text-align:center;">
-            <p style="margin:0;font-size:12px;color:#94a3b8;">Zubair Medical Complex Jhelum · +92 315 6621341</p>
-            <p style="margin:4px 0 0;font-size:11px;color:#cbd5e1;">This is an automated notification. Do not reply to this email.</p>
+            <p style="margin:0;font-size:12px;color:#94a3b8;">Zubair Medical Complex Jhelum · Kala Gujran, Jhelum, Punjab, Pakistan</p>
+            <p style="margin:4px 0 0;font-size:11px;color:#cbd5e1;">This is an automated reception alert. Do not reply to this email.</p>
           </td>
         </tr>
       </table>
@@ -172,29 +259,31 @@ function formatStaffEmailHtml(payload: NotificationPayload, dashboardUrl: string
 
 function formatPatientEmailHtml(payload: NotificationPayload): string {
   const { event, appointment, doctor } = payload;
-  const isConfirmed = event === 'confirmed';
-  const isCancelled = event === 'cancelled';
+  const isConfirmed = event === 'confirmed' || appointment.status === 'Confirmed' || appointment.status === 'Booked';
+  const isCancelled = event === 'cancelled' || appointment.status === 'Cancelled';
+
+  const eventLabel =
+    isConfirmed
+      ? 'Appointment Confirmed'
+      : isCancelled
+      ? 'Appointment Cancelled'
+      : event === 'new_appointment'
+      ? 'Appointment Request Received'
+      : `Appointment Update: ${appointment.status}`;
 
   const statusColor = isConfirmed ? '#15803d' : isCancelled ? '#dc2626' : '#1d4ed8';
   const statusBg = isConfirmed ? '#dcfce7' : isCancelled ? '#fee2e2' : '#dbeafe';
-  const eventLabel = isConfirmed
-    ? 'Appointment Confirmed ✅'
-    : isCancelled
-    ? 'Appointment Cancelled'
-    : event === 'new_appointment'
-    ? 'Appointment Received (Pending)'
-    : `Appointment Update: ${appointment.status}`;
 
   return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${eventLabel} – Zubair Medical Complex Jhelum</title></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${eventLabel} – Zubair Medical Complex</title></head>
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;">
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);max-width:600px;width:100%;">
         <tr>
           <td style="background:linear-gradient(135deg,#1E3A5F 0%,#1E90FF 100%);padding:32px 40px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">🏥 Zubair Medical Complex Jhelum</h1>
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">🏥 Zubair Medical Complex</h1>
             <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:13px;">Kala Gujran, Jhelum, Punjab, Pakistan</p>
           </td>
         </tr>
@@ -219,7 +308,7 @@ function formatPatientEmailHtml(payload: NotificationPayload): string {
               <tr><td colspan="2" style="background:#1E90FF;padding:10px 20px;"><span style="color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Your Appointment</span></td></tr>
               ${row('Appointment ID', `<strong style="font-family:monospace;color:#1E90FF;">${appointment.appointment_id}</strong>`)}
               ${row('Doctor', doctor.name)}
-              ${row('Specialty', doctor.specialty)}
+              ${row('Specialty', doctor.specialty || appointment.specialty)}
               ${row('Date', appointment.appointment_date)}
               ${row('Time', appointment.appointment_time)}
               ${row('Status', `<strong style="color:${statusColor};">${appointment.status}</strong>`)}
@@ -366,14 +455,76 @@ async function sendResendEmail(opts: {
 }
 
 // ---------------------------------------------------------------------------
-// Internal helpers: send WhatsApp via configured provider
+// Provider Availability Checks
 // ---------------------------------------------------------------------------
 
-async function dispatchWhatsApp(
+export function isWhatsAppProviderDeliverable(settings: Record<string, string>): boolean {
+  const provider = (settings.messaging_provider || 'mock').toLowerCase();
+  if (provider === 'meta_whatsapp') {
+    const phoneId = settings.meta_whatsapp_phone_number_id || process.env.META_WHATSAPP_PHONE_ID || process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const token = settings.meta_whatsapp_token || process.env.META_WHATSAPP_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
+    return Boolean(phoneId && token);
+  }
+  if (provider === 'twilio') {
+    const sid = settings.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+    const auth = settings.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
+    const fromNum = settings.twilio_from_number || process.env.TWILIO_FROM_NUMBER;
+    return Boolean(sid && auth && fromNum && fromNum.toLowerCase().includes('whatsapp'));
+  }
+  if (provider === 'mock') {
+    return true;
+  }
+  return true;
+}
+
+export function isSMSGatewayAvailable(settings: Record<string, string>): boolean {
+  const smsProvider = (settings.sms_provider || '').toLowerCase();
+  const provider = (settings.messaging_provider || 'mock').toLowerCase();
+
+  if (settings.sms_gateway_url || process.env.SMS_GATEWAY_URL || smsProvider === 'sms_gateway' || provider === 'sms_gateway') {
+    return Boolean(settings.sms_gateway_url || process.env.SMS_GATEWAY_URL);
+  }
+
+  if (smsProvider === 'twilio' || provider === 'twilio') {
+    const sid = settings.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+    const auth = settings.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
+    const fromNum = settings.twilio_sms_from_number || settings.twilio_from_number || process.env.TWILIO_SMS_FROM_NUMBER || process.env.TWILIO_FROM_NUMBER;
+    return Boolean(sid && auth && fromNum);
+  }
+
+  if (smsProvider === 'mock' || provider === 'mock' || provider === 'sms_mock') {
+    return true;
+  }
+
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers: Dispatch WhatsApp / SMS / Email
+// ---------------------------------------------------------------------------
+
+export async function dispatchWhatsApp(
   toPhone: string,
   message: string,
   settings: Record<string, string>
-): Promise<{ success: boolean; error?: string; channel: 'whatsapp' | 'sms' | 'mock' }> {
+): Promise<{ success: boolean; error?: string; channel: 'whatsapp' | 'mock' }> {
+  // 1. Priority: Local WhatsApp Web Gateway (Baileys)
+  try {
+    const gwRes = await fetch('http://localhost:5005/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: toPhone, message }),
+      signal: AbortSignal.timeout(4000)
+    });
+    if (gwRes.ok) {
+      const gwData = await gwRes.json();
+      if (gwData.success) {
+        console.log(`[WhatsApp Web Gateway SUCCESS] → ${toPhone}`);
+        return { success: true, channel: 'whatsapp' };
+      }
+    }
+  } catch {}
+
   const provider = (settings.messaging_provider || 'mock').toLowerCase();
 
   if (provider === 'meta_whatsapp') {
@@ -381,10 +532,11 @@ async function dispatchWhatsApp(
     const token = settings.meta_whatsapp_token || process.env.META_WHATSAPP_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN;
 
     if (phoneId && token) {
-      const result = await sendMetaWhatsAppMessage(toPhone, message, phoneId, token);
-      return { ...result, channel: 'whatsapp' };
+      const normalizedPhone = normalizeToE164(toPhone);
+      const result = await sendMetaWhatsAppMessage(normalizedPhone, message, phoneId, token);
+      return { success: result.success, error: result.error, channel: 'whatsapp' };
     }
-    return { success: false, error: 'Meta WhatsApp credentials not configured (WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_ACCESS_TOKEN)', channel: 'whatsapp' };
+    return { success: false, error: 'Meta WhatsApp credentials not configured', channel: 'whatsapp' };
   }
 
   if (provider === 'twilio') {
@@ -393,15 +545,75 @@ async function dispatchWhatsApp(
     const fromNum = settings.twilio_from_number || process.env.TWILIO_FROM_NUMBER;
 
     if (sid && auth && fromNum) {
-      const result = await sendTwilioMessage(toPhone, message, sid, auth, fromNum);
-      return { ...result, channel: 'sms' };
+      const formattedFrom = fromNum.startsWith('whatsapp:') ? fromNum : `whatsapp:${fromNum}`;
+      const result = await sendTwilioMessage(toPhone, message, sid, auth, formattedFrom);
+      return { success: result.success, error: result.error, channel: 'whatsapp' };
     }
-    return { success: false, error: 'Twilio credentials not configured (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM_NUMBER)', channel: 'sms' };
+    return { success: false, error: 'Twilio WhatsApp credentials not configured', channel: 'whatsapp' };
   }
 
-  // Mock mode: log to console but count as simulated success
-  console.log(`[WhatsApp MOCK] → ${toPhone}\n${message}\n`);
-  return { success: true, channel: 'mock' };
+  if (provider === 'mock') {
+    console.log(`[WhatsApp MOCK] → ${toPhone}\n${message}\n`);
+    return { success: true, channel: 'mock' };
+  }
+
+  return { success: false, error: `WhatsApp provider '${provider}' not supported or not configured`, channel: 'whatsapp' };
+}
+
+export async function dispatchSMS(
+  toPhone: string,
+  message: string,
+  settings: Record<string, string>
+): Promise<{ success: boolean; error?: string; channel: 'sms' | 'mock' }> {
+  const provider = (settings.sms_provider || settings.messaging_provider || 'mock').toLowerCase();
+
+  // 1. Custom HTTP SMS Gateway
+  const smsUrl = settings.sms_gateway_url || process.env.SMS_GATEWAY_URL;
+  if (smsUrl || provider === 'sms_gateway') {
+    if (smsUrl) {
+      try {
+        const apiKey = settings.sms_gateway_api_key || process.env.SMS_GATEWAY_API_KEY || '';
+        const res = await fetch(smsUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
+          },
+          body: JSON.stringify({ to: toPhone, message })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          return { success: false, error: errData.error || errData.message || `HTTP ${res.status}`, channel: 'sms' };
+        }
+        return { success: true, channel: 'sms' };
+      } catch (err: any) {
+        return { success: false, error: err.message || 'SMS Gateway error', channel: 'sms' };
+      }
+    }
+    return { success: false, error: 'SMS Gateway URL not configured (SMS_GATEWAY_URL)', channel: 'sms' };
+  }
+
+  // 2. Twilio SMS
+  if (provider === 'twilio' || settings.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID) {
+    const sid = settings.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+    const auth = settings.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
+    const fromNum = settings.twilio_sms_from_number || settings.twilio_from_number || process.env.TWILIO_SMS_FROM_NUMBER || process.env.TWILIO_FROM_NUMBER;
+
+    if (sid && auth && fromNum) {
+      const plainFrom = fromNum.replace(/^whatsapp:/i, '');
+      const result = await sendTwilioMessage(toPhone, message, sid, auth, plainFrom);
+      return { success: result.success, error: result.error, channel: 'sms' };
+    }
+    return { success: false, error: 'Twilio SMS credentials not configured', channel: 'sms' };
+  }
+
+  // 3. Mock mode
+  if (provider === 'mock' || provider === 'sms_mock') {
+    console.log(`[SMS MOCK] → ${toPhone}\n${message}\n`);
+    return { success: true, channel: 'mock' };
+  }
+
+  return { success: false, error: 'No SMS gateway or Twilio credentials configured', channel: 'sms' };
 }
 
 async function dispatchEmail(opts: {
@@ -414,7 +626,6 @@ async function dispatchEmail(opts: {
   const emailFrom = process.env.EMAIL_FROM || 'Zubair Medical Complex <notifications@resend.dev>';
 
   if (!resendKey) {
-    // No key configured – log and return as mock/skipped
     const emailProvider = opts.settings.email_provider || 'resend';
     if (emailProvider === 'mock') {
       console.log(`[Email MOCK] → ${opts.to} | Subject: ${opts.subject}`);
@@ -427,7 +638,7 @@ async function dispatchEmail(opts: {
 }
 
 // ---------------------------------------------------------------------------
-// Public API
+// Public API: sendAppointmentNotifications
 // ---------------------------------------------------------------------------
 
 export async function sendAppointmentNotifications(
@@ -448,26 +659,23 @@ export async function sendAppointmentNotifications(
 
   const { event, appointment, doctor } = payload;
 
-  // Resolve configured recipients
+  // Resolve hospital recipients (exclusively for staff alerts)
   const hospitalWhatsAppNumber =
     settings.hospital_notification_whatsapp ||
     settings.hospital_notification_number ||
     process.env.HOSPITAL_NOTIFICATION_WHATSAPP ||
-    '+92 315 6621341';
+    HOSPITAL_DEFAULT_NUMBER;
 
   const hospitalEmail =
     settings.hospital_notification_email ||
     process.env.HOSPITAL_NOTIFICATION_EMAIL ||
     '';
 
-  const patientWhatsAppNumber = appointment.whatsapp || appointment.phone;
-  const patientEmail = appointment.email || '';
-
   // Build messages
   const patientWaMsg = formatPatientWhatsAppMessage(payload, hospitalWhatsAppNumber);
+  const patientSmsMsg = formatPatientSMSMessage(payload, hospitalWhatsAppNumber);
   const hospitalWaMsg = formatHospitalWhatsAppMessage(payload);
 
-  // Dashboard URL (for staff email)
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL ||
     process.env.VERCEL_URL
@@ -501,9 +709,9 @@ export async function sendAppointmentNotifications(
   };
 
   // -------------------------------------------------------------------------
-  // 1. Staff WhatsApp notification
+  // 1. Staff WhatsApp notification (Exclusively to configured hospital staff recipient)
   // -------------------------------------------------------------------------
-  {
+  if (hospitalWhatsAppNumber) {
     const alreadySent = storage.hasNotificationBeenSent(appointment.appointment_id, event, 'whatsapp', 'hospital');
     if (alreadySent) {
       channels.staff_whatsapp = { status: 'skipped', error: 'Already sent' };
@@ -517,7 +725,7 @@ export async function sendAppointmentNotifications(
         recipient_type: 'hospital',
         recipient_number: hospitalWhatsAppNumber,
         event,
-        channel: result.channel === 'mock' ? 'mock' : result.channel === 'sms' ? 'sms' : 'whatsapp',
+        channel: result.channel === 'mock' ? 'mock' : 'whatsapp',
         message: hospitalWaMsg,
         status,
         error_details: result.error
@@ -526,7 +734,7 @@ export async function sendAppointmentNotifications(
   }
 
   // -------------------------------------------------------------------------
-  // 2. Staff Email notification
+  // 2. Staff Email notification (Exclusively to configured hospital staff email)
   // -------------------------------------------------------------------------
   if (hospitalEmail) {
     const alreadySent = storage.hasNotificationBeenSent(appointment.appointment_id, event, 'email', 'hospital');
@@ -558,26 +766,113 @@ export async function sendAppointmentNotifications(
   }
 
   // -------------------------------------------------------------------------
-  // 3. Patient WhatsApp notification
+  // 3. Patient WhatsApp / SMS notification (Strictly to patient's own eligible recipient)
   // -------------------------------------------------------------------------
-  if (patientWhatsAppNumber) {
-    const alreadySent = storage.hasNotificationBeenSent(appointment.appointment_id, event, 'whatsapp', 'patient');
-    if (alreadySent) {
-      channels.patient_whatsapp = { status: 'skipped', error: 'Already sent' };
-    } else {
-      const result = await dispatchWhatsApp(patientWhatsAppNumber, patientWaMsg, settings);
-      const status = result.channel === 'mock' ? 'simulated' : result.success ? 'sent' : 'failed';
-      channels.patient_whatsapp = { status: result.success || result.channel === 'mock' ? 'sent' : 'failed', error: result.error };
+  // Check if a patient notification has already been sent for this appointment + event (Idempotency)
+  const alreadyPatientSent = storage.hasNotificationBeenSent(
+    appointment.appointment_id,
+    event,
+    'messaging',
+    'patient'
+  );
 
+  if (alreadyPatientSent) {
+    channels.patient_whatsapp = { status: 'skipped', error: 'Already sent' };
+  } else {
+    const hasValidWa = isValidPatientRecipientNumber(appointment.whatsapp, hospitalWhatsAppNumber);
+    const hasValidPhone = isValidPatientRecipientNumber(appointment.phone, hospitalWhatsAppNumber);
+
+    const canWhatsApp = isWhatsAppProviderDeliverable(settings);
+    const canSMS = isSMSGatewayAvailable(settings);
+
+    let delivered = false;
+    let attemptedChannel: 'whatsapp' | 'sms' = 'whatsapp';
+    let attemptedRecipient: string | null = null;
+    let lastError: string | undefined = undefined;
+
+    // Priority 1: Use patient's submitted WhatsApp number if provided and valid
+    if (hasValidWa && canWhatsApp) {
+      attemptedChannel = 'whatsapp';
+      attemptedRecipient = appointment.whatsapp!.trim();
+      const res = await dispatchWhatsApp(attemptedRecipient, patientWaMsg, settings);
+      if (res.success || res.channel === 'mock') {
+        delivered = true;
+        channels.patient_whatsapp = { status: 'sent' };
+        storage.addNotificationLog({
+          appointment_id: appointment.appointment_id,
+          recipient_type: 'patient',
+          recipient_number: attemptedRecipient,
+          event,
+          channel: res.channel === 'mock' ? 'mock' : 'whatsapp',
+          message: patientWaMsg,
+          status: res.channel === 'mock' ? 'simulated' : 'sent'
+        });
+      } else {
+        lastError = res.error || 'WhatsApp delivery failed for patient WhatsApp number';
+      }
+    }
+
+    // Priority 2: Fall back to patient's phone number via WhatsApp only if provider can deliver
+    if (!delivered && hasValidPhone && canWhatsApp) {
+      attemptedChannel = 'whatsapp';
+      attemptedRecipient = appointment.phone!.trim();
+      const res = await dispatchWhatsApp(attemptedRecipient, patientWaMsg, settings);
+      if (res.success || res.channel === 'mock') {
+        delivered = true;
+        channels.patient_whatsapp = { status: 'sent' };
+        storage.addNotificationLog({
+          appointment_id: appointment.appointment_id,
+          recipient_type: 'patient',
+          recipient_number: attemptedRecipient,
+          event,
+          channel: res.channel === 'mock' ? 'mock' : 'whatsapp',
+          message: patientWaMsg,
+          status: res.channel === 'mock' ? 'simulated' : 'sent'
+        });
+      } else {
+        lastError = res.error || 'WhatsApp delivery failed for patient phone number';
+      }
+    }
+
+    // Priority 3: If WhatsApp cannot be used, send SMS to patient's phone number through configured SMS gateway
+    if (!delivered && hasValidPhone && canSMS) {
+      attemptedChannel = 'sms';
+      attemptedRecipient = appointment.phone!.trim();
+      const res = await dispatchSMS(attemptedRecipient, patientSmsMsg, settings);
+      if (res.success || res.channel === 'mock') {
+        delivered = true;
+        channels.patient_whatsapp = { status: 'sent' };
+        storage.addNotificationLog({
+          appointment_id: appointment.appointment_id,
+          recipient_type: 'patient',
+          recipient_number: attemptedRecipient,
+          event,
+          channel: res.channel === 'mock' ? 'mock' : 'sms',
+          message: patientSmsMsg,
+          status: res.channel === 'mock' ? 'simulated' : 'sent'
+        });
+      } else {
+        lastError = res.error || 'SMS delivery failed';
+      }
+    }
+
+    // Priority 4: If no valid recipient or provider is available, or provider failed:
+    // Log failure clearly. Never substitute hospital number.
+    if (!delivered) {
+      const errorReason = !hasValidWa && !hasValidPhone
+        ? 'No valid patient recipient contact details provided. Never falling back to hospital number.'
+        : lastError || 'No configured messaging provider or SMS gateway could deliver to the patient recipient.';
+
+      channels.patient_whatsapp = { status: 'failed', error: errorReason };
       storage.addNotificationLog({
         appointment_id: appointment.appointment_id,
         recipient_type: 'patient',
-        recipient_number: patientWhatsAppNumber,
+        recipient_number: (hasValidWa ? appointment.whatsapp : hasValidPhone ? appointment.phone : '') || 'NONE',
         event,
-        channel: result.channel === 'mock' ? 'mock' : result.channel === 'sms' ? 'sms' : 'whatsapp',
-        message: patientWaMsg,
-        status,
-        error_details: result.error
+        channel: attemptedChannel,
+        message: attemptedChannel === 'sms' ? patientSmsMsg : patientWaMsg,
+        status: 'failed',
+        error_details: errorReason
       });
     }
   }
@@ -585,6 +880,7 @@ export async function sendAppointmentNotifications(
   // -------------------------------------------------------------------------
   // 4. Patient Email notification
   // -------------------------------------------------------------------------
+  const patientEmail = (appointment.email && appointment.email.trim()) ? appointment.email.trim() : '';
   if (patientEmail) {
     const alreadySent = storage.hasNotificationBeenSent(appointment.appointment_id, event, 'email', 'patient');
     if (alreadySent) {
@@ -612,7 +908,7 @@ export async function sendAppointmentNotifications(
     }
   }
 
-  // Aggregate for legacy callers
+  // Aggregate results accurately
   const patientNotified =
     channels.patient_whatsapp.status === 'sent' || channels.patient_email.status === 'sent';
   const hospitalNotified =
@@ -620,7 +916,9 @@ export async function sendAppointmentNotifications(
 
   const provider = (settings.messaging_provider || 'mock').toLowerCase();
   const legacyChannel: 'whatsapp' | 'sms' | 'email' | 'mock' =
-    provider === 'meta_whatsapp' ? 'whatsapp' : provider === 'twilio' ? 'sms' : 'mock';
+    channels.patient_whatsapp.status === 'sent'
+      ? (provider === 'meta_whatsapp' ? 'whatsapp' : provider === 'twilio' ? 'sms' : 'mock')
+      : 'mock';
 
   return {
     success: patientNotified || hospitalNotified,

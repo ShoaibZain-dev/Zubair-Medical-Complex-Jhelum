@@ -33,8 +33,8 @@ export async function PATCH(
     const body = await request.json();
     const { status, customNotes } = body;
 
-    if (!status || !['Pending', 'Booked', 'Checked', 'Cancelled'].includes(status)) {
-      return NextResponse.json({ error: 'Valid status is required.' }, { status: 400 });
+    if (!status || !['Pending', 'Booked', 'Confirmed', 'Checked', 'Cancelled'].includes(status)) {
+      return NextResponse.json({ error: 'Valid status is required (Pending, Booked, Confirmed, Checked, Cancelled).' }, { status: 400 });
     }
 
     const current = storage.getAppointmentById(params.id);
@@ -43,23 +43,36 @@ export async function PATCH(
     }
 
     const previousStatus = current.status;
+    const isConfirmation = status === 'Confirmed' || status === 'Booked';
+    const wasAlreadyConfirmed = previousStatus === 'Confirmed' || previousStatus === 'Booked';
+
+    // 1. Update the appointment status to Confirmed (or requested status) in the database first
     const updated = storage.updateAppointmentStatus(current.id, status);
     if (!updated) {
       return NextResponse.json({ error: 'Failed to update appointment' }, { status: 500 });
     }
 
-    // If status changed to Booked or Cancelled, automatically trigger notification
+    // 2. Prevent duplicate confirmation messages when receptionist clicks Confirm repeatedly
+    if (isConfirmation && wasAlreadyConfirmed) {
+      return NextResponse.json({
+        success: true,
+        appointment: updated,
+        message: 'Appointment is already confirmed. Duplicate notification prevented.',
+        duplicatePrevented: true
+      });
+    }
+
+    // 3. Send notifications only after database update succeeds
     let notifResult = null;
-    if (previousStatus !== status && (status === 'Booked' || status === 'Cancelled' || status === 'Checked')) {
+    if (isConfirmation || (previousStatus !== status && (status === 'Cancelled' || status === 'Checked'))) {
       const doctor = storage.getDoctorById(updated.doctor_id);
       if (doctor) {
         try {
-          const event =
-            status === 'Booked'
-              ? 'confirmed'
-              : status === 'Cancelled'
-              ? 'cancelled'
-              : 'status_update';
+          const event = isConfirmation
+            ? 'confirmed'
+            : status === 'Cancelled'
+            ? 'cancelled'
+            : 'status_update';
 
           notifResult = await sendAppointmentNotifications({
             event,

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, Calendar, Users, Stethoscope, Bell, 
-  Share2, LogOut, ShieldCheck, Settings, ExternalLink 
+  Share2, LogOut, ShieldCheck, Settings, ExternalLink, Smartphone 
 } from 'lucide-react';
 
 interface Props {
@@ -30,6 +30,7 @@ export default function AdminNavbar({ userRole = 'Receptionist', userName = 'Sta
   const navItems = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard, roles: ['Admin', 'Receptionist'] },
     { name: 'Appointments', href: '/admin/appointments', icon: Calendar, roles: ['Admin', 'Receptionist'] },
+    { name: 'WhatsApp Web', href: '/admin/whatsapp', icon: Smartphone, roles: ['Admin', 'Receptionist'] },
     { name: 'Doctors & Schedules', href: '/admin/doctors', icon: Stethoscope, roles: ['Admin'] },
     { name: 'Notifications', href: '/admin/notifications', icon: Bell, roles: ['Admin'] },
     { name: 'Social Links', href: '/admin/social', icon: Share2, roles: ['Admin'] },

@@ -7,15 +7,21 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:auth": "node scripts/test-auth-flow.mjs"
+    "test:auth": "node scripts/test-auth-flow.mjs",
+    "test:notifications": "node scripts/test-notifications.mjs",
+    "test": "node scripts/test-notifications.mjs",
+    "whatsapp": "node scripts/whatsapp-gateway.mjs"
   },
   "dependencies": {
     "@next/swc-wasm-nodejs": "^14.2.15",
     "@supabase/supabase-js": "^2.45.6",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
     "canvas-confetti": "^1.9.3",
     "clsx": "^2.1.1",
     "lucide-react": "^0.453.0",
     "next": "14.2.15",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "resend": "^6.32.1",

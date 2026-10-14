@@ -42,18 +42,26 @@ export async function POST(request: NextRequest) {
       notes
     } = body;
 
-    // Strict validation
+    // Strict validation for required fields
     if (!patient_name || !patient_name.trim()) {
       return NextResponse.json({ error: 'Patient Full Name is required.' }, { status: 400 });
     }
     if (!phone || !phone.trim()) {
       return NextResponse.json({ error: 'Phone Number is required.' }, { status: 400 });
     }
-    if (!whatsapp || !whatsapp.trim()) {
-      return NextResponse.json({ error: 'WhatsApp Number is required.' }, { status: 400 });
+    // WhatsApp is optional – validate format only if provided
+    if (whatsapp && typeof whatsapp === 'string' && whatsapp.trim()) {
+      const cleanWa = whatsapp.trim().replace(/[^0-9+]/g, '');
+      if (cleanWa.length < 10) {
+        return NextResponse.json({ error: 'Please enter a valid WhatsApp Number (at least 10 digits).' }, { status: 400 });
+      }
     }
-    if (!email || !email.includes('@')) {
-      return NextResponse.json({ error: 'A valid Email Address is required.' }, { status: 400 });
+    // Email is optional – validate format only if provided
+    if (email && typeof email === 'string' && email.trim()) {
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email.trim())) {
+        return NextResponse.json({ error: 'Please enter a valid Email Address.' }, { status: 400 });
+      }
     }
     const ageNum = parseInt(age, 10);
     if (isNaN(ageNum) || ageNum <= 0 || ageNum > 120) {
@@ -97,7 +105,7 @@ export async function POST(request: NextRequest) {
 
     if (!targetSlot) {
       return NextResponse.json(
-        { error: `The selected time slot (${appointment_time}) is not a valid consultation time for ${doctor.name}.` },
+        { error: `The selected time slot (${appointment_time}) is not a salid consultation time for ${doctor.name}.` },
         { status: 400 }
       );
     }
@@ -110,11 +118,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Create appointment in storage
+    const trimmedPhone = phone.trim();
+    const trimmedWhatsapp = whatsapp?.trim() || '';
+    const trimmedEmail = email?.trim()?.toLowerCase() || '';
+
     const createResult = storage.createAppointment({
       patient_name: patient_name.trim(),
-      phone: phone.trim(),
-      whatsapp: whatsapp.trim(),
-      email: email.trim().toLowerCase(),
+      phone: trimmedPhone,
+      // If patient left WhatsApp blank, store empty string (notifications will fall back to phone)
+      whatsapp: trimmedWhatsapp,
+      email: trimmedEmail,
       age: ageNum,
       gender,
       doctor_id,

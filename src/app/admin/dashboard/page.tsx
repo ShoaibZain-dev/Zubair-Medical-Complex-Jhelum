@@ -10,6 +10,7 @@ import {
   Users, Stethoscope, Search, Filter, Phone, ArrowRight,
   TrendingUp, Check, AlertTriangle, UserCheck, Eye, Loader2, Trash2, Sparkles
 } from 'lucide-react';
+import WhatsAppNotificationCard from '@/components/WhatsAppNotificationCard';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -152,7 +153,7 @@ export default function AdminDashboardPage() {
       a.appointment_id.toLowerCase().includes(q) ||
       a.patient_name.toLowerCase().includes(q) ||
       a.phone.includes(q) ||
-      a.whatsapp.includes(q)
+      (a.whatsapp || '').includes(q)
     );
     return matchesDoctor && matchesStatus && matchesSearch;
   });
@@ -401,7 +402,11 @@ export default function AdminDashboardPage() {
                         </td>
                         <td className="py-3.5 px-4 font-mono text-[11px] text-slate-700">
                           <div>{appt.phone}</div>
-                          <div className="text-[10px] text-emerald-600">WA: {appt.whatsapp}</div>
+                          {appt.whatsapp && appt.whatsapp !== appt.phone ? (
+                            <div className="text-[10px] text-emerald-600">WA: {appt.whatsapp}</div>
+                          ) : appt.whatsapp ? (
+                            <div className="text-[10px] text-emerald-600">WA: same</div>
+                          ) : null}
                         </td>
                         <td className="py-3.5 px-4">
                           <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -609,6 +614,13 @@ export default function AdminDashboardPage() {
                 <p className="text-[11px] text-violet-600 italic">Click 'Generate Summary' to auto-generate a concise AI summary of this consultation's notes.</p>
               )}
             </div>
+
+            {/* WhatsApp Notification Card Preview for Receptionist */}
+            <WhatsAppNotificationCard
+              appointment={selectedAppt}
+              doctor={doctorMap.get(selectedAppt.doctor_id)}
+              hospitalContact="+92 315 6621341"
+            />
 
             {/* Modal actions */}
             <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-100">
