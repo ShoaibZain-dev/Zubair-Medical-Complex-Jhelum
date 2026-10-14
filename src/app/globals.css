@@ -180,3 +180,96 @@ html[lang="ur"] .rounded-full {
     padding: 0 !important;
   }
 }
+
+/* ==========================================================================
+   URDU RTL LAYOUT SYSTEM — Full Alignment Fixes
+   Nastaliq Urdu is RTL. Every layout block, flex row, text, and input
+   must flip direction when lang="ur" / dir="rtl" is active.
+   ========================================================================== */
+
+/* --- 1. Base RTL text alignment --- */
+html[lang="ur"] *:not([dir="ltr"]):not(.keep-ltr):not(input[type="tel"]):not(input[type="email"]):not(input[type="number"]) {
+  text-align: right;
+}
+
+/* --- 2. Flexbox row direction flip for RTL --- */
+html[lang="ur"] .flex:not(.flex-col):not(.keep-ltr),
+html[lang="ur"] .inline-flex:not(.flex-col):not(.keep-ltr) {
+  flex-direction: row-reverse;
+}
+
+/* Exception: flex-col stays vertical */
+html[lang="ur"] .flex.flex-col,
+html[lang="ur"] .flex-col {
+  flex-direction: column;
+}
+
+/* --- 3. justify-between correction for RTL --- */
+html[lang="ur"] .justify-between {
+  flex-direction: row-reverse;
+}
+
+/* --- 4. Margin/Padding flip for RTL --- */
+html[lang="ur"] .ml-auto { margin-left: unset !important; margin-right: auto !important; }
+html[lang="ur"] .mr-auto { margin-right: unset !important; margin-left: auto !important; }
+html[lang="ur"] .pl-4  { padding-left: unset !important;  padding-right: 1rem !important; }
+html[lang="ur"] .pr-4  { padding-right: unset !important; padding-left: 1rem !important; }
+html[lang="ur"] .pl-2  { padding-left: unset !important;  padding-right: 0.5rem !important; }
+html[lang="ur"] .pr-2  { padding-right: unset !important; padding-left: 0.5rem !important; }
+html[lang="ur"] .pl-3  { padding-left: unset !important;  padding-right: 0.75rem !important; }
+html[lang="ur"] .pr-3  { padding-right: unset !important; padding-left: 0.75rem !important; }
+
+/* --- 5. Text alignment overrides in RTL --- */
+html[lang="ur"] .text-left  { text-align: right !important; }
+html[lang="ur"] .text-right { text-align: left  !important; }
+html[lang="ur"] .text-center { text-align: center !important; }
+
+/* --- 6. Form inputs RTL --- */
+html[lang="ur"] input[type="text"],
+html[lang="ur"] input[type="search"],
+html[lang="ur"] input[type="password"],
+html[lang="ur"] textarea,
+html[lang="ur"] select {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Phone/email/number stay LTR */
+html[lang="ur"] input[type="tel"],
+html[lang="ur"] input[type="email"],
+html[lang="ur"] input[type="number"] {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+/* --- 7. Nastaliq line-height per text size --- */
+html[lang="ur"] .text-xs   { line-height: 2.1; }
+html[lang="ur"] .text-sm   { line-height: 2.0; }
+html[lang="ur"] .text-base { line-height: 1.95; }
+html[lang="ur"] .text-lg   { line-height: 1.85; }
+html[lang="ur"] .text-xl   { line-height: 1.8; }
+html[lang="ur"] .text-2xl  { line-height: 1.75; }
+html[lang="ur"] .text-3xl,
+html[lang="ur"] .text-4xl  { line-height: 1.7; }
+
+/* --- 8. Table cells RTL --- */
+html[lang="ur"] th,
+html[lang="ur"] td {
+  text-align: right;
+}
+
+/* --- 9. List items RTL --- */
+html[lang="ur"] ul,
+html[lang="ur"] ol {
+  padding-right: 1.5rem;
+  padding-left: 0;
+}
+
+/* --- 10. Keep technical / numeric values LTR inside RTL --- */
+html[lang="ur"] .ltr-value,
+html[lang="ur"] .keep-ltr,
+html[lang="ur"] [dir="ltr"] {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: isolate !important;
+}

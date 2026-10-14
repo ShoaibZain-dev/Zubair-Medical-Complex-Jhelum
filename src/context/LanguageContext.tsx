@@ -597,6 +597,8 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     localStorage.setItem('zmc_language', lang);
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr';
+    document.body.dir = lang === 'ur' ? 'rtl' : 'ltr';
+    document.body.style.fontFamily = lang === 'ur' ? "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', Tahoma, Arial, sans-serif" : "";
   };
 
   const toggleLanguage = () => {
