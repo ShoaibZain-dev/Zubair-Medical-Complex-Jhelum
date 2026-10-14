@@ -172,10 +172,17 @@ export default function AdminWhatsAppPage() {
                 ? 'bg-emerald-100 text-emerald-800'
                 : gatewayRunning
                 ? 'bg-amber-100 text-amber-800'
-                : 'bg-rose-100 text-rose-800'
+                : isLiveProd
+                ? 'bg-blue-100 text-blue-800'
+                : 'bg-slate-100 text-slate-600'
             }`}>
-              <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-600 animate-pulse' : gatewayRunning ? 'bg-amber-600' : 'bg-rose-600'}`} />
-              {connected ? 'Connected' : gatewayRunning ? 'Scan QR Code' : 'Gateway Offline'}
+              <span className={`w-2 h-2 rounded-full ${
+                connected ? 'bg-emerald-600 animate-pulse'
+                : gatewayRunning ? 'bg-amber-600'
+                : isLiveProd ? 'bg-blue-600'
+                : 'bg-slate-400'
+              }`} />
+              {connected ? 'Connected' : gatewayRunning ? 'Scan QR Code' : isLiveProd ? 'Cloud API Mode' : 'Local Dev'}
             </span>
 
             <button
@@ -232,6 +239,41 @@ export default function AdminWhatsAppPage() {
                     </button>
                   </div>
                 </div>
+              ) : isLiveProd ? (
+                /* ── Live Vercel Deployment: Show Cloud API guidance instead of gateway error ── */
+                <div className="space-y-6">
+                  <div className="py-8 text-center space-y-4 max-w-md mx-auto">
+                    <div className="w-14 h-14 rounded-full bg-blue-100 text-[#1E90FF] flex items-center justify-center mx-auto">
+                      <Globe className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-black text-slate-900">Live Production Mode</h4>
+                      <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                        The local WhatsApp Web Gateway (QR code scanning) only works on <strong>localhost</strong> — it requires a persistent background process which Vercel&apos;s serverless platform does not support.
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl text-left text-xs space-y-2">
+                      <p className="font-bold text-blue-900 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-[#1E90FF]" />
+                        For live production, use the <strong>Meta WhatsApp Cloud API</strong>
+                      </p>
+                      <p className="text-blue-800 leading-relaxed">
+                        Scroll down to the <strong>&quot;Meta WhatsApp Business Cloud API&quot;</strong> section below. Follow the 7-step setup checklist to configure your Meta Developer credentials and approved message template.
+                      </p>
+                      <p className="text-blue-800 leading-relaxed">
+                        Once configured, appointment confirmations will be sent automatically to patients via the official WhatsApp Business API — no local server or QR code needed.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left text-xs text-amber-800 space-y-1">
+                      <p className="font-bold">💡 Alternatively: Use a VPS or Tunnel</p>
+                      <p className="leading-relaxed">
+                        If you prefer the free QR-code approach, run <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">npm run whatsapp</code> on your own PC or VPS, expose it via ngrok or Cloudflare Tunnel, and enter the public URL in the Gateway Endpoint section below.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-6">
                   {/* Instructions */}
@@ -273,18 +315,18 @@ export default function AdminWhatsAppPage() {
                       </div>
                     ) : (
                       <div className="py-8 text-center space-y-4 max-w-md mx-auto">
-                        <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                        <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
                           <AlertCircle className="w-6 h-6" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-bold text-slate-900">WhatsApp Gateway is Offline</h4>
+                          <h4 className="text-sm font-bold text-slate-900">WhatsApp Gateway Not Running</h4>
                           <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                            The background WhatsApp Web service at <code className="bg-slate-200 px-1 py-0.5 rounded font-mono text-[11px]">{gatewayUrl}</code> is not reachable.
+                            Start the local WhatsApp gateway to enable QR code pairing.
                           </p>
                         </div>
 
                         <div className="p-3 bg-white rounded-xl border border-slate-200 text-left text-xs space-y-2">
-                          <p className="font-semibold text-slate-800">To start on your machine:</p>
+                          <p className="font-semibold text-slate-800">Run in a terminal on your machine:</p>
                           <code className="block bg-slate-900 text-emerald-400 p-2 rounded-lg font-mono text-[11px]">
                             npm run whatsapp
                           </code>
