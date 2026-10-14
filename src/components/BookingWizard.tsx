@@ -37,6 +37,7 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
   const [age, setAge] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
   const [notes, setNotes] = useState('');
+  const [whatsAppConsent, setWhatsAppConsent] = useState(true); // Pre-ticked for convenience
 
   // Slot fetching state
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -190,7 +191,8 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
           appointment_date: selectedDate,
           appointment_time: selectedTime,
           specialty: selectedDoctor?.specialty || '',
-          notes
+          notes,
+          whatsapp_consent: whatsAppConsent
         })
       });
 
@@ -748,6 +750,30 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
                   onChange={e => setNotes(e.target.value)}
                   className="w-full p-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-[#1E90FF] focus:border-[#1E90FF] transition-all"
                 ></textarea>
+              </div>
+
+              {/* WhatsApp Notification Consent */}
+              <div className="sm:col-span-2">
+                <label className="flex items-start gap-3 p-4 rounded-xl border border-emerald-200/80 bg-emerald-50/60 cursor-pointer hover:bg-emerald-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={whatsAppConsent}
+                    onChange={e => setWhatsAppConsent(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-400 shrink-0"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">
+                      {isUrdu
+                        ? '✅ واٹس ایپ اپوائنٹمنٹ نوٹیفکیشن کی اجازت دیں'
+                        : '✅ I consent to receive WhatsApp appointment notifications'}
+                    </span>
+                    <span className="text-[11px] text-slate-500 leading-relaxed mt-0.5 block">
+                      {isUrdu
+                        ? 'میں اس بات سے متفق ہوں کہ زبیر میڈیکل کمپلیکس جہلم میری اپوائنٹمنٹ کی تصدیق اور اپڈیٹس میرے واٹس ایپ نمبر پر خودکار طریقے سے بھیجے۔'
+                        : 'I agree that Zubair Medical Complex Jhelum may send me automatic appointment confirmation and status updates on my WhatsApp number.'}
+                    </span>
+                  </div>
+                </label>
               </div>
             </div>
 

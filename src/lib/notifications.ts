@@ -345,14 +345,15 @@ async function sendMetaWhatsAppMessage(
   message: string,
   phoneNumberId: string,
   token: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     const cleanPhone = toPhone.replace(/[^0-9]/g, '');
     const formattedPhone = cleanPhone.startsWith('0')
       ? `92${cleanPhone.slice(1)}`
       : cleanPhone;
 
-    const res = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
+    const apiVersion = process.env.WHATSAPP_API_VERSION || 'v19.0';
+    const res = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -372,9 +373,67 @@ async function sendMetaWhatsAppMessage(
       return { success: false, error: errData.error?.message || `HTTP ${res.status}` };
     }
 
-    return { success: true };
+    const resData = await res.json().catch(() => ({}));
+    // Extract the WhatsApp message ID for delivery tracking via webhooks
+    const messageId = resData.messages?.[0]?.id;
+    return { success: true, messageId };
   } catch (err: any) {
     return { success: false, error: err.message || 'Meta API error' };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Meta WhatsApp Template Message — Required for business-initiated messages
+// to users who have NOT messaged you first in the last 24 hours.
+// Template must be approved in Meta WhatsApp Business Manager.
+// ---------------------------------------------------------------------------
+async function sendMetaWhatsAppTemplate(
+  toPhone: string,
+  templateName: string,
+  languageCode: string,
+  components: Array<{ type: string; parameters: Array<{ type: string; text: string }> }>,
+  phoneNumberId: string,
+  token: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  try {
+    const cleanPhone = toPhone.replace(/[^0-9]/g, '');
+    const formattedPhone = cleanPhone.startsWith('0')
+      ? `92${cleanPhone.slice(1)}`
+      : cleanPhone;
+
+    const apiVersion = process.env.WHATSAPP_API_VERSION || 'v19.0';
+    const res = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: formattedPhone,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: languageCode },
+          components
+        }
+      })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      const errMsg = errData.error?.message || `HTTP ${res.status}`;
+      console.error(`[Meta WhatsApp Template] Failed to send template '${templateName}': ${errMsg}`);
+      return { success: false, error: errMsg };
+    }
+
+    const resData = await res.json().catch(() => ({}));
+    const messageId = resData.messages?.[0]?.id;
+    console.log(`[Meta WhatsApp Template] Sent '${templateName}' to ${formattedPhone}, msgId: ${messageId}`);
+    return { success: true, messageId };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Meta Template API error' };
   }
 }
 
@@ -506,8 +565,13 @@ export function isSMSGatewayAvailable(settings: Record<string, string>): boolean
 export async function dispatchWhatsApp(
   toPhone: string,
   message: string,
-  settings: Record<string, string>
-): Promise<{ success: boolean; error?: string; channel: 'whatsapp' | 'mock' }> {
+  settings: Record<string, string>,
+  templateParams?: {
+    name: string;
+    language: string;
+    components: Array<{ type: string; parameters: Array<{ type: string; text: string }> }>;
+  }
+): Promise<{ success: boolean; error?: string; channel: 'whatsapp' | 'mock'; messageId?: string }> {
   // 1. Priority: Local or Hosted WhatsApp Web Gateway (Baileys)
   const gatewayUrl = (settings.whatsapp_gateway_url || process.env.WHATSAPP_GATEWAY_URL || 'http://localhost:5005').replace(/\/+$/, '');
   try {
@@ -521,7 +585,7 @@ export async function dispatchWhatsApp(
       const gwData = await gwRes.json();
       if (gwData.success) {
         console.log(`[WhatsApp Web Gateway SUCCESS] → ${toPhone}`);
-        return { success: true, channel: 'whatsapp' };
+        return { success: true, channel: 'whatsapp', messageId: gwData.messageId };
       }
     }
   } catch {}
@@ -534,8 +598,30 @@ export async function dispatchWhatsApp(
 
     if (phoneId && token) {
       const normalizedPhone = normalizeToE164(toPhone);
+
+      // Prefer template message if template name is configured (required for business-initiated messages)
+      const templateName = templateParams?.name || process.env.WHATSAPP_TEMPLATE_NAME;
+      const templateLanguage = templateParams?.language || process.env.WHATSAPP_TEMPLATE_LANGUAGE || 'en';
+
+      if (templateName && templateParams?.components) {
+        // Send approved template message
+        const result = await sendMetaWhatsAppTemplate(
+          normalizedPhone,
+          templateName,
+          templateLanguage,
+          templateParams.components,
+          phoneId,
+          token
+        );
+        return { success: result.success, error: result.error, channel: 'whatsapp', messageId: result.messageId };
+      } else if (templateName && !templateParams?.components) {
+        // Template name set but no components provided — fall back to free-text
+        console.warn(`[Meta WhatsApp] Template name '${templateName}' set but no components provided — falling back to free-text message.`);
+      }
+
+      // Free-text message (works within 24hr customer service window)
       const result = await sendMetaWhatsAppMessage(normalizedPhone, message, phoneId, token);
-      return { success: result.success, error: result.error, channel: 'whatsapp' };
+      return { success: result.success, error: result.error, channel: 'whatsapp', messageId: result.messageId };
     }
     return { success: false, error: 'Meta WhatsApp credentials not configured', channel: 'whatsapp' };
   }
@@ -729,7 +815,8 @@ export async function sendAppointmentNotifications(
         channel: result.channel === 'mock' ? 'mock' : 'whatsapp',
         message: hospitalWaMsg,
         status,
-        error_details: result.error
+        error_details: result.error,
+        ...(result.messageId ? { whatsapp_message_id: result.messageId } : {})
       });
     }
   }
@@ -791,11 +878,35 @@ export async function sendAppointmentNotifications(
     let attemptedRecipient: string | null = null;
     let lastError: string | undefined = undefined;
 
+    // Build Meta WhatsApp template parameters for appointment confirmation
+    // These map to the {{1}}, {{2}}, ... variables in the approved template.
+    // Template: "Assalam-o-Alaikum {{1}}! Your appointment at Zubair Medical
+    // Complex Jhelum has been confirmed. ID: {{2}}, Doctor: {{3}},
+    // Date: {{4}}, Time: {{5}}. Thank you."
+    const templateName = process.env.WHATSAPP_TEMPLATE_NAME;
+    const templateLanguage = process.env.WHATSAPP_TEMPLATE_LANGUAGE || 'en';
+    const templateParams = templateName ? {
+      name: templateName,
+      language: templateLanguage,
+      components: [
+        {
+          type: 'body',
+          parameters: [
+            { type: 'text', text: appointment.patient_name },
+            { type: 'text', text: appointment.appointment_id },
+            { type: 'text', text: doctor.name },
+            { type: 'text', text: appointment.appointment_date },
+            { type: 'text', text: appointment.appointment_time }
+          ]
+        }
+      ]
+    } : undefined;
+
     // Priority 1: Use patient's submitted WhatsApp number if provided and valid
     if (hasValidWa && canWhatsApp) {
       attemptedChannel = 'whatsapp';
       attemptedRecipient = appointment.whatsapp!.trim();
-      const res = await dispatchWhatsApp(attemptedRecipient, patientWaMsg, settings);
+      const res = await dispatchWhatsApp(attemptedRecipient, patientWaMsg, settings, templateParams);
       if (res.success || res.channel === 'mock') {
         delivered = true;
         channels.patient_whatsapp = { status: 'sent' };
@@ -806,7 +917,8 @@ export async function sendAppointmentNotifications(
           event,
           channel: res.channel === 'mock' ? 'mock' : 'whatsapp',
           message: patientWaMsg,
-          status: res.channel === 'mock' ? 'simulated' : 'sent'
+          status: res.channel === 'mock' ? 'simulated' : 'sent',
+          ...(res.messageId ? { whatsapp_message_id: res.messageId } : {})
         });
       } else {
         lastError = res.error || 'WhatsApp delivery failed for patient WhatsApp number';
@@ -817,7 +929,7 @@ export async function sendAppointmentNotifications(
     if (!delivered && hasValidPhone && canWhatsApp) {
       attemptedChannel = 'whatsapp';
       attemptedRecipient = appointment.phone!.trim();
-      const res = await dispatchWhatsApp(attemptedRecipient, patientWaMsg, settings);
+      const res = await dispatchWhatsApp(attemptedRecipient, patientWaMsg, settings, templateParams);
       if (res.success || res.channel === 'mock') {
         delivered = true;
         channels.patient_whatsapp = { status: 'sent' };
@@ -828,7 +940,8 @@ export async function sendAppointmentNotifications(
           event,
           channel: res.channel === 'mock' ? 'mock' : 'whatsapp',
           message: patientWaMsg,
-          status: res.channel === 'mock' ? 'simulated' : 'sent'
+          status: res.channel === 'mock' ? 'simulated' : 'sent',
+          ...(res.messageId ? { whatsapp_message_id: res.messageId } : {})
         });
       } else {
         lastError = res.error || 'WhatsApp delivery failed for patient phone number';

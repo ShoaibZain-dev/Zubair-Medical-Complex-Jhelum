@@ -651,6 +651,42 @@
       "appointment_id": "ZMC-38965",
       "created_at": "2026-10-14T06:25:03.933Z",
       "updated_at": "2026-10-14T06:25:24.763Z"
+    },
+    {
+      "patient_name": "Ali",
+      "phone": "03499298955",
+      "whatsapp": "03499298955",
+      "email": "",
+      "age": 16,
+      "gender": "Male",
+      "doctor_id": "doc-zubair",
+      "appointment_date": "2026-10-24",
+      "appointment_time": "09:30 AM",
+      "specialty": "Medical Specialist",
+      "status": "Pending",
+      "notification_status": "Pending",
+      "id": "appt-1791989730419-90938",
+      "appointment_id": "ZMC-90938",
+      "created_at": "2026-10-14T14:55:30.419Z",
+      "updated_at": "2026-10-14T14:55:32.293Z"
+    },
+    {
+      "patient_name": "Akram",
+      "phone": "03703764001",
+      "whatsapp": "03703764001",
+      "email": "",
+      "age": 43,
+      "gender": "Male",
+      "doctor_id": "doc-arshad",
+      "appointment_date": "2026-10-31",
+      "appointment_time": "11:15 AM",
+      "specialty": "Rheumatologist",
+      "status": "Pending",
+      "notification_status": "Pending",
+      "id": "appt-1791990000635-48992",
+      "appointment_id": "ZMC-48992",
+      "created_at": "2026-10-14T15:00:00.635Z",
+      "updated_at": "2026-10-14T15:00:03.003Z"
     }
   ],
   "users": [
@@ -713,9 +749,58 @@
     "meta_whatsapp_token": "",
     "twilio_account_sid": "",
     "twilio_auth_token": "",
-    "twilio_from_number": ""
+    "twilio_from_number": "",
+    "whatsapp_gateway_url": "http://localhost:5005"
   },
   "notificationLogs": [
+    {
+      "appointment_id": "ZMC-48992",
+      "recipient_type": "patient",
+      "recipient_number": "03703764001",
+      "event": "new_appointment",
+      "channel": "whatsapp",
+      "message": "Assalam-o-Alaikum Akram,\n\nYour appointment request at Zubair Medical Complex Jhelum has been received successfully.\n\nDoctor: Dr. Muhammad Arshad\nAppointment Date: 2026-10-31\nAppointment Time: 11:15 AM\nAppointment ID: ZMC-48992\nStatus: Pending Confirmation\n\nOur reception team will review your request and notify you once your appointment is confirmed.\n\nThank you for choosing Zubair Medical Complex Jhelum.",
+      "status": "sent",
+      "whatsapp_message_id": "3EB07AF8A52B0BAC3C7DBE",
+      "id": "log-1791990002984-738",
+      "timestamp": "2026-10-14T15:00:02.984Z"
+    },
+    {
+      "appointment_id": "ZMC-48992",
+      "recipient_type": "hospital",
+      "recipient_number": "+92 315 6621341",
+      "event": "new_appointment",
+      "channel": "whatsapp",
+      "message": "🔔 *Zubair Medical Complex - Reception Alert*\n*Event:* NEW_APPOINTMENT\n\n• *Appointment ID:* ZMC-48992\n• *Patient:* Akram (Age: 43, Gender: Male)\n• *Phone:* 03703764001 | *WhatsApp:* 03703764001\n\n• *Doctor:* Dr. Muhammad Arshad (Rheumatologist)\n• *Date:* 2026-10-31\n• *Time:* 11:15 AM\n• *Status:* Pending\n",
+      "status": "sent",
+      "whatsapp_message_id": "3EB047232AB25E8F3CFFEB",
+      "id": "log-1791990002219-544",
+      "timestamp": "2026-10-14T15:00:02.219Z"
+    },
+    {
+      "appointment_id": "ZMC-90938",
+      "recipient_type": "patient",
+      "recipient_number": "03499298955",
+      "event": "new_appointment",
+      "channel": "whatsapp",
+      "message": "Assalam-o-Alaikum Ali,\n\nYour appointment request at Zubair Medical Complex Jhelum has been received successfully.\n\nDoctor: Dr. Syed Zubair Younis\nAppointment Date: 2026-10-24\nAppointment Time: 09:30 AM\nAppointment ID: ZMC-90938\nStatus: Pending Confirmation\n\nOur reception team will review your request and notify you once your appointment is confirmed.\n\nThank you for choosing Zubair Medical Complex Jhelum.",
+      "status": "sent",
+      "whatsapp_message_id": "3EB0C1FA40F8CAA8A7AC6A",
+      "id": "log-1791989732281-819",
+      "timestamp": "2026-10-14T14:55:32.281Z"
+    },
+    {
+      "appointment_id": "ZMC-90938",
+      "recipient_type": "hospital",
+      "recipient_number": "+92 315 6621341",
+      "event": "new_appointment",
+      "channel": "whatsapp",
+      "message": "🔔 *Zubair Medical Complex - Reception Alert*\n*Event:* NEW_APPOINTMENT\n\n• *Appointment ID:* ZMC-90938\n• *Patient:* Ali (Age: 16, Gender: Male)\n• *Phone:* 03499298955 | *WhatsApp:* 03499298955\n\n• *Doctor:* Dr. Syed Zubair Younis (Medical Specialist)\n• *Date:* 2026-10-24\n• *Time:* 09:30 AM\n• *Status:* Pending\n",
+      "status": "sent",
+      "whatsapp_message_id": "3EB00A27286F452EEEC738",
+      "id": "log-1791989731706-654",
+      "timestamp": "2026-10-14T14:55:31.706Z"
+    },
     {
       "appointment_id": "ZMC-38965",
       "recipient_type": "patient",

@@ -3,6 +3,12 @@ import path from 'path';
 import os from 'os';
 import { Doctor, DoctorSchedule, Appointment, AdminUser, SocialMediaLink, SystemSetting, NotificationLog } from '../types';
 
+// Extended NotificationLog with WhatsApp tracking fields (stored but not in public types)
+interface NotificationLogExtended extends NotificationLog {
+  whatsapp_message_id?: string;
+  delivered_at?: string;
+}
+
 interface DatabaseData {
   doctors: Doctor[];
   schedules: DoctorSchedule[];
@@ -10,7 +16,7 @@ interface DatabaseData {
   users: AdminUser[];
   socialLinks: SocialMediaLink[];
   settings: Record<string, string>;
-  notificationLogs: NotificationLog[];
+  notificationLogs: NotificationLogExtended[];
 }
 
 const PRIMARY_DATA_DIR = path.join(process.cwd(), 'src', 'data');
@@ -509,9 +515,9 @@ export const storage = {
     return false;
   },
 
-  addNotificationLog(log: Omit<NotificationLog, 'id' | 'timestamp'>): NotificationLog {
+  addNotificationLog(log: Omit<NotificationLog, 'id' | 'timestamp'> & { whatsapp_message_id?: string }): NotificationLogExtended {
     const data = ensureDataFile();
-    const newLog: NotificationLog = {
+    const newLog: NotificationLogExtended = {
       ...log,
       id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: new Date().toISOString()
@@ -523,6 +529,21 @@ export const storage = {
     }
     saveDataFile(data);
     return newLog;
+  },
+
+  /** Update a notification log entry by its WhatsApp message ID (for webhook delivery status updates) */
+  updateNotificationLogByMessageId(
+    whatsappMessageId: string,
+    updates: { status?: NotificationLog['status']; error_details?: string; delivered_at?: string }
+  ): boolean {
+    const data = ensureDataFile();
+    const index = data.notificationLogs.findIndex(
+      (l: NotificationLogExtended) => l.whatsapp_message_id === whatsappMessageId
+    );
+    if (index === -1) return false;
+    data.notificationLogs[index] = { ...data.notificationLogs[index], ...updates };
+    saveDataFile(data);
+    return true;
   },
 
   /** Check if a notification was already sent for this appointment+event+channel+recipient combo */
@@ -545,8 +566,18 @@ export const storage = {
     );
   },
 
-  getNotificationLogs(limit = 50): NotificationLog[] {
+  getNotificationLogs(limit = 50): NotificationLogExtended[] {
     const data = ensureDataFile();
     return data.notificationLogs.slice(0, limit);
+  },
+
+  /** Internal helper: expose raw data for webhook handler (server-side only) */
+  _getRawData(): DatabaseData {
+    return ensureDataFile();
+  },
+
+  /** Internal helper: save raw data (used by webhook handler after updating logs) */
+  _saveRawData(data: DatabaseData): void {
+    saveDataFile(data);
   }
 };

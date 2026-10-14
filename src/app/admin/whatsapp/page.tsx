@@ -446,6 +446,112 @@ export default function AdminWhatsAppPage() {
             </div>
           </div>
         </div>
+
+        {/* ─── Meta WhatsApp Cloud API Configuration ─────────────────────── */}
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold text-[#1E90FF] uppercase tracking-wider mb-1">
+                <Globe className="w-4 h-4" />
+                <span>Official Meta Cloud API — Production Option</span>
+              </div>
+              <h2 className="text-lg font-black text-slate-900">Meta WhatsApp Business Cloud API</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                For production Vercel deployments where a local WhatsApp Web connection is not possible. Requires a Meta Business Account and an approved message template.
+              </p>
+            </div>
+            <a
+              href="https://developers.facebook.com/apps"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#1E90FF] hover:bg-blue-600 shrink-0 transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Open Meta Developer Portal
+            </a>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left: Setup Steps */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-slate-900">📋 Setup Checklist</h3>
+              <ol className="space-y-3 text-xs text-slate-700">
+                {[
+                  { n: 1, title: 'Create Meta Developer Account', desc: 'Go to developers.facebook.com and create/login with your Facebook account.' },
+                  { n: 2, title: 'Create a Meta App (Business type)', desc: 'My Apps → Create App → Business → Add WhatsApp product.' },
+                  { n: 3, title: 'Get Credentials', desc: 'WhatsApp → API Setup → Copy Phone Number ID and generate Access Token.' },
+                  { n: 4, title: 'Add Environment Variables on Vercel', desc: 'Vercel Dashboard → Project → Settings → Environment Variables → add all 7 vars.' },
+                  { n: 5, title: 'Create & Submit Message Template', desc: 'WhatsApp Manager → Message Templates → Create "appointment_confirmation" template → Submit for approval (24-48h).' },
+                  { n: 6, title: 'Configure Webhook', desc: 'App Dashboard → WhatsApp → Configuration → Webhooks → set Callback URL and Verify Token.' },
+                  { n: 7, title: 'Set Provider in Admin Settings', desc: 'Admin → Notifications Settings → Messaging Provider → select "meta_whatsapp".' },
+                ].map(step => (
+                  <li key={step.n} className="flex gap-3">
+                    <span className="w-5 h-5 rounded-full bg-[#1E90FF] text-white text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{step.n}</span>
+                    <div>
+                      <p className="font-bold text-slate-900">{step.title}</p>
+                      <p className="text-slate-500 leading-relaxed">{step.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* Right: Env Vars & Webhook */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-slate-900">🔑 Required Environment Variables</h3>
+              <div className="bg-slate-900 text-emerald-400 p-4 rounded-xl font-mono text-[11px] space-y-1">
+                {[
+                  'WHATSAPP_ACCESS_TOKEN=<from_meta_api_setup>',
+                  'WHATSAPP_PHONE_NUMBER_ID=<from_meta_api_setup>',
+                  'WHATSAPP_TEMPLATE_NAME=appointment_confirmation',
+                  'WHATSAPP_TEMPLATE_LANGUAGE=en',
+                  'WHATSAPP_API_VERSION=v19.0',
+                  'WHATSAPP_VERIFY_TOKEN=<your_secret_random_string>',
+                  'WHATSAPP_APP_SECRET=<from_meta_app_settings>',
+                ].map((v, i) => (
+                  <div key={i} className="text-emerald-300">{v}</div>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-bold text-slate-900">🔗 Webhook URL for Meta Portal</h3>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <code className="text-xs font-mono text-[#1E90FF] break-all">
+                    https://zubairmedicalcomplexjhelum.vercel.app/api/whatsapp/webhook
+                  </code>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Enter this URL in: Meta App → WhatsApp → Configuration → Webhooks → Callback URL. Subscribe to the <strong>messages</strong> field.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-bold text-slate-900">📝 Template Body (to copy into Meta)</h3>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-slate-800 leading-relaxed font-mono whitespace-pre-wrap">
+{`Assalam-o-Alaikum {{1}}!
+
+Your appointment at Zubair Medical Complex Jhelum has been confirmed.
+
+Appointment ID: {{2}}
+Doctor: {{3}}
+Appointment Date: {{4}}
+Appointment Time: {{5}}
+
+Thank you for choosing Zubair Medical Complex Jhelum.
+Please contact our reception if you need assistance.`}
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Template name: <code className="bg-slate-100 px-1 py-0.5 rounded">appointment_confirmation</code> | Category: <strong>UTILITY</strong> | Language: <strong>English</strong>
+                </p>
+              </div>
+
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 space-y-1">
+                <p className="font-bold">⚠️ Important: Template Approval Required</p>
+                <p>Meta requires all business-initiated message templates to be approved before use. Approval takes 24–48 hours. Until approved, you can test with phone numbers added as authorized test recipients in the Meta sandbox.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   );
