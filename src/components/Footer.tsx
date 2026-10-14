@@ -5,10 +5,16 @@ import Link from 'next/link';
 import { Phone, Calendar, Search, ShieldCheck, HeartPulse, FlaskConical, ExternalLink } from 'lucide-react';
 import SocialSection from './SocialSection';
 import LocationSection from './LocationSection';
+import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function Footer() {
+  const pathname = usePathname();
   const { t } = useLanguage();
+
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <footer className="bg-slate-900 text-slate-300 no-print">

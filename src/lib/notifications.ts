@@ -1,4 +1,4 @@
-﻿import { Appointment, Doctor, MultiChannelNotificationResult } from '../types';
+import { Appointment, Doctor, MultiChannelNotificationResult } from '../types';
 import { storage } from './storage';
 
 export const HOSPITAL_DEFAULT_NUMBER = '+92 315 6621341';
@@ -508,13 +508,14 @@ export async function dispatchWhatsApp(
   message: string,
   settings: Record<string, string>
 ): Promise<{ success: boolean; error?: string; channel: 'whatsapp' | 'mock' }> {
-  // 1. Priority: Local WhatsApp Web Gateway (Baileys)
+  // 1. Priority: Local or Hosted WhatsApp Web Gateway (Baileys)
+  const gatewayUrl = (settings.whatsapp_gateway_url || process.env.WHATSAPP_GATEWAY_URL || 'http://localhost:5005').replace(/\/+$/, '');
   try {
-    const gwRes = await fetch('http://localhost:5005/send', {
+    const gwRes = await fetch(`${gatewayUrl}/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to: toPhone, message }),
-      signal: AbortSignal.timeout(4000)
+      signal: AbortSignal.timeout(5000)
     });
     if (gwRes.ok) {
       const gwData = await gwRes.json();

@@ -1,8 +1,13 @@
 'use client';
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function WhatsAppFloatingButton() {
+  const pathname = usePathname();
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
   const whatsappNumber = '923156621341';
   const displayPhone = '+92 315 6621341';
   const defaultMessage = encodeURIComponent(

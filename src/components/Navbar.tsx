@@ -25,6 +25,10 @@ export default function Navbar() {
     return pathname.startsWith(href);
   };
 
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
+
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm no-print">
       {/* Top emergency and clinic announcement bar */}

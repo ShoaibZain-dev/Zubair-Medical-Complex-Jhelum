@@ -168,7 +168,8 @@ const INITIAL_SETTINGS: Record<string, string> = {
   meta_whatsapp_token: '',
   twilio_account_sid: '',
   twilio_auth_token: '',
-  twilio_from_number: ''
+  twilio_from_number: '',
+  whatsapp_gateway_url: 'http://localhost:5005'
 };
 
 function ensureDataFile(): DatabaseData {
