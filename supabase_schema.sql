@@ -8,6 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 2. DOCTORS TABLE
 CREATE TABLE IF NOT EXISTS doctors (
+    
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     qualification VARCHAR(255),
@@ -61,7 +62,8 @@ CREATE TABLE IF NOT EXISTS admin_profiles (
     user_id UUID UNIQUE, -- linked to supabase auth.users
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    role VARCHAR(50) DEFAULT 'Receptionist' NOT NULL CHECK (role IN ('Admin', 'Receptionist')),
+    role VARCHAR(50) DEFAULT 'Staff' NOT NULL CHECK (role IN ('Super Admin', 'Hospital Admin', 'Staff', 'Admin', 'Receptionist')),
+    password_hash TEXT,
     active BOOLEAN DEFAULT true NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
@@ -108,7 +110,7 @@ ALTER TABLE social_media_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notification_logs ENABLE ROW LEVEL SECURITY;
 
--- Doctors: Public read access, Admin write access
+-- Doctors: Public read access, Super Admin & Hospital Admin write access
 CREATE POLICY "Public can view active doctors" ON doctors
     FOR SELECT USING (active = true);
 
@@ -117,12 +119,12 @@ CREATE POLICY "Admin can modify doctors" ON doctors
         EXISTS (
             SELECT 1 FROM admin_profiles 
             WHERE admin_profiles.user_id = auth.uid() 
-            AND admin_profiles.role = 'Admin' 
+            AND admin_profiles.role IN ('Super Admin', 'Hospital Admin', 'Admin') 
             AND admin_profiles.active = true
         )
     );
 
--- Schedules: Public read access, Admin write access
+-- Schedules: Public read access, Super Admin & Hospital Admin write access
 CREATE POLICY "Public can view active doctor schedules" ON doctor_schedules
     FOR SELECT USING (active = true);
 
@@ -131,7 +133,7 @@ CREATE POLICY "Admin can modify doctor schedules" ON doctor_schedules
         EXISTS (
             SELECT 1 FROM admin_profiles 
             WHERE admin_profiles.user_id = auth.uid() 
-            AND admin_profiles.role = 'Admin' 
+            AND admin_profiles.role IN ('Super Admin', 'Hospital Admin', 'Admin') 
             AND admin_profiles.active = true
         )
     );
@@ -145,13 +147,35 @@ CREATE POLICY "Public can insert appointment" ON appointments
 CREATE POLICY "Public can view appointment status" ON appointments
     FOR SELECT USING (true);
 
--- Admin and Receptionist can view and update appointments
+-- All authenticated active staff can view and update appointments
 CREATE POLICY "Staff can view and update appointments" ON appointments
     FOR ALL USING (
         EXISTS (
             SELECT 1 FROM admin_profiles 
             WHERE admin_profiles.user_id = auth.uid() 
             AND admin_profiles.active = true
+        )
+    );
+
+-- Admin Profiles: Super Admin full control, staff view own
+CREATE POLICY "Super Admin can manage admin profiles" ON admin_profiles
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM admin_profiles ap 
+            WHERE ap.user_id = auth.uid() 
+            AND ap.role IN ('Super Admin', 'Admin') 
+            AND ap.active = true
+        )
+    );
+
+CREATE POLICY "Staff can view own profile" ON admin_profiles
+    FOR SELECT USING (
+        user_id = auth.uid() OR
+        EXISTS (
+            SELECT 1 FROM admin_profiles ap 
+            WHERE ap.user_id = auth.uid() 
+            AND ap.role IN ('Super Admin', 'Admin') 
+            AND ap.active = true
         )
     );
 
@@ -164,21 +188,84 @@ CREATE POLICY "Admin can update social media links" ON social_media_links
         EXISTS (
             SELECT 1 FROM admin_profiles 
             WHERE admin_profiles.user_id = auth.uid() 
-            AND admin_profiles.role = 'Admin' 
+            AND admin_profiles.role IN ('Super Admin', 'Hospital Admin', 'Admin') 
             AND admin_profiles.active = true
         )
     );
 
--- System Settings: Only authenticated staff can read, only Admin can write
-CREATE POLICY "Admin can view and update system settings" ON system_settings
+-- System Settings: Only authenticated staff can read, Super Admin can write
+CREATE POLICY "Staff can view system settings" ON system_settings
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM admin_profiles 
+            WHERE admin_profiles.user_id = auth.uid() 
+            AND admin_profiles.active = true
+        )
+    );
+
+CREATE POLICY "Admin can update system settings" ON system_settings
     FOR ALL USING (
         EXISTS (
             SELECT 1 FROM admin_profiles 
             WHERE admin_profiles.user_id = auth.uid() 
-            AND admin_profiles.role = 'Admin' 
+            AND admin_profiles.role IN ('Super Admin', 'Admin') 
             AND admin_profiles.active = true
         )
     );
+
+-- =====================================================================
+-- STORAGE BUCKET & POLICIES (DOCTOR PROFILE PHOTOS)
+-- =====================================================================
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('doctor-photos', 'doctor-photos', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Public can view doctor photos" ON storage.objects
+    FOR SELECT USING (bucket_id = 'doctor-photos');
+
+CREATE POLICY "Admin can upload doctor photos" ON storage.objects
+    FOR INSERT WITH CHECK (
+        bucket_id = 'doctor-photos' AND 
+        EXISTS (
+            SELECT 1 FROM admin_profiles 
+            WHERE admin_profiles.user_id = auth.uid() 
+            AND admin_profiles.role IN ('Super Admin', 'Hospital Admin', 'Admin') 
+            AND admin_profiles.active = true
+        )
+    );
+
+CREATE POLICY "Admin can delete doctor photos" ON storage.objects
+    FOR DELETE USING (
+        bucket_id = 'doctor-photos' AND 
+        EXISTS (
+            SELECT 1 FROM admin_profiles 
+            WHERE admin_profiles.user_id = auth.uid() 
+            AND admin_profiles.role IN ('Super Admin', 'Hospital Admin', 'Admin') 
+            AND admin_profiles.active = true
+        )
+    );
+
+-- =====================================================================
+-- LOCKOUT PROTECTION TRIGGER: PREVENT DELETION OF LAST SUPER ADMIN
+-- =====================================================================
+CREATE OR REPLACE FUNCTION prevent_last_super_admin_deletion()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (OLD.role IN ('Super Admin', 'Admin') AND OLD.active = true) THEN
+        IF (SELECT COUNT(*) FROM admin_profiles WHERE role IN ('Super Admin', 'Admin') AND active = true AND id != OLD.id) = 0 THEN
+            RAISE EXCEPTION 'Cannot delete or remove the last active Super Admin / Owner account.';
+        END IF;
+    END IF;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_prevent_last_super_admin ON admin_profiles;
+CREATE TRIGGER trg_prevent_last_super_admin
+    BEFORE DELETE ON admin_profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION prevent_last_super_admin_deletion();
+
 
 -- =====================================================================
 -- INITIAL EXACT SEED DATA (DO NOT INVENT EXTRA DOCTORS OR DETAILS)

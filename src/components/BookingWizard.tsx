@@ -329,12 +329,16 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
                     }`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-base transition-colors shrink-0 ${
+                      <div className={`w-11 h-11 rounded-2xl overflow-hidden flex items-center justify-center font-bold text-base transition-colors shrink-0 ${
                         isSelected
                           ? 'bg-[#1E90FF] text-white shadow-sm'
                           : 'bg-slate-100 text-slate-700 group-hover:bg-[#1E90FF] group-hover:text-white'
                       }`}>
-                        <Stethoscope className="w-5 h-5" />
+                        {doctor.avatar_url ? (
+                          <img src={doctor.avatar_url} alt={doctor.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Stethoscope className="w-5 h-5" />
+                        )}
                       </div>
                       <div>
                         <div className="text-base font-bold text-slate-900 group-hover:text-[#1E90FF] transition-colors leading-snug">

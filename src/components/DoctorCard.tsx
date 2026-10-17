@@ -70,8 +70,16 @@ export default function DoctorCard({ doctor }: DoctorCardProps) {
         {/* Header with avatar / badge */}
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100/80 border border-blue-200 flex items-center justify-center text-[#1E90FF] font-black text-xl shadow-inner group-hover:scale-105 transition-transform shrink-0">
-              <UserCheck className="w-7 h-7 text-[#1E90FF]" />
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100/80 border border-blue-200 overflow-hidden flex items-center justify-center text-[#1E90FF] font-black text-xl shadow-inner group-hover:scale-105 transition-transform shrink-0">
+              {doctor.avatar_url ? (
+                <img 
+                  src={doctor.avatar_url} 
+                  alt={doctor.name} 
+                  className="w-full h-full object-cover" 
+                />
+              ) : (
+                <UserCheck className="w-7 h-7 text-[#1E90FF]" />
+              )}
             </div>
             <div>
               <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-50 text-[#1E90FF] border border-blue-100 mb-1">

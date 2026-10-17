@@ -2,7 +2,23 @@ export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Frida
 
 export type AppointmentStatus = 'Pending' | 'Confirmed' | 'Booked' | 'Completed' | 'Checked' | 'Cancelled';
 
-export type UserRole = 'Admin' | 'Receptionist';
+export type UserRole = 
+  | 'Super Admin' 
+  | 'Hospital Admin' 
+  | 'Staff' 
+  | 'Admin' 
+  | 'Receptionist';
+
+export function isSuperAdmin(role?: string): boolean {
+  if (!role) return false;
+  return role === 'Super Admin' || role === 'Admin';
+}
+
+export function isHospitalAdminOrAbove(role?: string): boolean {
+  if (!role) return false;
+  return role === 'Super Admin' || role === 'Hospital Admin' || role === 'Admin';
+}
+
 
 export interface Doctor {
   id: string;

@@ -1,7 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import crypto from 'crypto';
 import { Doctor, DoctorSchedule, Appointment, AdminUser, SocialMediaLink, SystemSetting, NotificationLog } from '../types/index';
+import { getSupabaseAdminClient, isSupabaseConfigured } from './supabase';
 
 // Extended NotificationLog with WhatsApp tracking fields (stored but not in public types)
 interface NotificationLogExtended extends NotificationLog {
@@ -293,19 +295,113 @@ export const storage = {
     if (index === -1) return null;
     data.doctors[index] = { ...data.doctors[index], ...updates };
     saveDataFile(data);
+
+    // Asynchronous sync to Supabase if configured
+    if (isSupabaseConfigured()) {
+      const sb = getSupabaseAdminClient();
+      if (sb) {
+        sb.from('doctors').update({
+          name: updates.name,
+          specialty: updates.specialty,
+          qualification: updates.qualification,
+          contact: updates.contact,
+          social_media: updates.social_media,
+          avatar_url: updates.avatar_url,
+          active: updates.active
+        }).eq('id', id).then(({ error }) => {
+          if (error) console.warn('Supabase updateDoctor sync notice:', error.message);
+        });
+      }
+    }
+
     return data.doctors[index];
   },
 
   createDoctor(doctor: Omit<Doctor, 'id' | 'created_at'>): Doctor {
     const data = ensureDataFile();
+    const newDocId = crypto.randomUUID();
     const newDoc: Doctor = {
       ...doctor,
-      id: `doc-${Date.now()}`,
+      id: newDocId,
       created_at: new Date().toISOString()
     };
     data.doctors.push(newDoc);
     saveDataFile(data);
+
+    // Asynchronous sync to Supabase if configured
+    if (isSupabaseConfigured()) {
+      const sb = getSupabaseAdminClient();
+      if (sb) {
+        sb.from('doctors').insert({
+          id: newDoc.id,
+          name: newDoc.name,
+          qualification: newDoc.qualification || null,
+          specialty: newDoc.specialty,
+          contact: newDoc.contact,
+          social_media: newDoc.social_media || null,
+          avatar_url: newDoc.avatar_url || null,
+          active: newDoc.active,
+          created_at: newDoc.created_at
+        }).then(({ error }) => {
+          if (error) console.warn('Supabase createDoctor sync notice:', error.message);
+        });
+      }
+    }
+
     return newDoc;
+  },
+
+  deleteDoctor(id: string): { success: boolean; deactivated: boolean; message: string } {
+    const data = ensureDataFile();
+    const docIndex = data.doctors.findIndex(d => d.id === id);
+    if (docIndex === -1) {
+      return { success: false, deactivated: false, message: 'Doctor not found.' };
+    }
+
+    // Safety rule: Never delete historical appointments.
+    // If doctor has appointments, safely deactivate to preserve medical history and relationships.
+    const hasAppointments = data.appointments.some(a => a.doctor_id === id);
+    if (hasAppointments) {
+      data.doctors[docIndex].active = false;
+      saveDataFile(data);
+
+      if (isSupabaseConfigured()) {
+        const sb = getSupabaseAdminClient();
+        if (sb) {
+          sb.from('doctors').update({ active: false }).eq('id', id).then(({ error }) => {
+            if (error) console.warn('Supabase doctor deactivation sync notice:', error.message);
+          });
+        }
+      }
+
+      return {
+        success: true,
+        deactivated: true,
+        message: 'Doctor has historical appointment records and was safely deactivated instead of deleted to protect patient history.'
+      };
+    }
+
+    // No historical appointments: safe removal
+    data.doctors.splice(docIndex, 1);
+    data.schedules = data.schedules.filter(s => s.doctor_id !== id);
+    saveDataFile(data);
+
+    if (isSupabaseConfigured()) {
+      const sb = getSupabaseAdminClient();
+      if (sb) {
+        sb.from('doctor_schedules').delete().eq('doctor_id', id).then(() => {
+          sb.from('doctors').delete().eq('id', id).then(({ error }) => {
+            if (error) console.warn('Supabase doctor delete sync notice:', error.message);
+          });
+        });
+      }
+    }
+
+    return {
+      success: true,
+      deactivated: false,
+      message: 'Doctor and associated schedules removed successfully.'
+    };
   },
 
   getSchedules(doctorId?: string): DoctorSchedule[] {
@@ -316,13 +412,81 @@ export const storage = {
     return data.schedules;
   },
 
+  createSchedule(schedule: Omit<DoctorSchedule, 'id'>): DoctorSchedule {
+    const data = ensureDataFile();
+    const newSchedule: DoctorSchedule = {
+      ...schedule,
+      id: crypto.randomUUID()
+    };
+    data.schedules.push(newSchedule);
+    saveDataFile(data);
+
+    if (isSupabaseConfigured()) {
+      const sb = getSupabaseAdminClient();
+      if (sb) {
+        sb.from('doctor_schedules').insert({
+          id: newSchedule.id,
+          doctor_id: newSchedule.doctor_id,
+          day_of_week: newSchedule.day_of_week,
+          period: newSchedule.period || 'general',
+          start_time: newSchedule.start_time,
+          end_time: newSchedule.end_time,
+          slot_duration: newSchedule.slot_duration,
+          active: newSchedule.active
+        }).then(({ error }) => {
+          if (error) console.warn('Supabase createSchedule sync notice:', error.message);
+        });
+      }
+    }
+
+    return newSchedule;
+  },
+
   updateSchedule(id: string, updates: Partial<DoctorSchedule>): DoctorSchedule | null {
     const data = ensureDataFile();
     const index = data.schedules.findIndex(s => s.id === id);
     if (index === -1) return null;
     data.schedules[index] = { ...data.schedules[index], ...updates };
     saveDataFile(data);
+
+    if (isSupabaseConfigured()) {
+      const sb = getSupabaseAdminClient();
+      if (sb) {
+        sb.from('doctor_schedules').update({
+          day_of_week: updates.day_of_week,
+          period: updates.period,
+          start_time: updates.start_time,
+          end_time: updates.end_time,
+          slot_duration: updates.slot_duration,
+          active: updates.active
+        }).eq('id', id).then(({ error }) => {
+          if (error) console.warn('Supabase updateSchedule sync notice:', error.message);
+        });
+      }
+    }
+
     return data.schedules[index];
+  },
+
+  deleteSchedule(id: string): boolean {
+    const data = ensureDataFile();
+    const initialLen = data.schedules.length;
+    data.schedules = data.schedules.filter(s => s.id !== id);
+    if (data.schedules.length !== initialLen) {
+      saveDataFile(data);
+
+      if (isSupabaseConfigured()) {
+        const sb = getSupabaseAdminClient();
+        if (sb) {
+          sb.from('doctor_schedules').delete().eq('id', id).then(({ error }) => {
+            if (error) console.warn('Supabase deleteSchedule sync notice:', error.message);
+          });
+        }
+      }
+
+      return true;
+    }
+    return false;
   },
 
   saveDoctorSchedules(doctorId: string, newSchedules: DoctorSchedule[]): void {
@@ -426,6 +590,31 @@ export const storage = {
 
     data.appointments.push(newAppt);
     saveDataFile(data);
+
+    if (isSupabaseConfigured()) {
+      const sb = getSupabaseAdminClient();
+      if (sb) {
+        sb.from('appointments').insert({
+          appointment_id: newAppt.appointment_id,
+          patient_name: newAppt.patient_name,
+          phone: newAppt.phone,
+          whatsapp: newAppt.whatsapp || newAppt.phone,
+          email: newAppt.email || '',
+          age: newAppt.age,
+          gender: newAppt.gender,
+          doctor_id: newAppt.doctor_id,
+          appointment_date: newAppt.appointment_date,
+          appointment_time: newAppt.appointment_time,
+          specialty: newAppt.specialty,
+          notes: newAppt.notes || null,
+          status: newAppt.status,
+          notification_status: newAppt.notification_status
+        }).then(({ error }) => {
+          if (error) console.warn('Supabase appointment insert sync notice:', error.message);
+        });
+      }
+    }
+
     return { success: true, appointment: newAppt };
   },
 
@@ -442,6 +631,19 @@ export const storage = {
     data.appointments[index].status = status;
     data.appointments[index].updated_at = new Date().toISOString();
     saveDataFile(data);
+
+    if (isSupabaseConfigured()) {
+      const sb = getSupabaseAdminClient();
+      if (sb) {
+        sb.from('appointments').update({
+          status,
+          updated_at: data.appointments[index].updated_at
+        }).eq('appointment_id', data.appointments[index].appointment_id).then(({ error }) => {
+          if (error) console.warn('Supabase appointment status sync notice:', error.message);
+        });
+      }
+    }
+
     return data.appointments[index];
   },
 
@@ -551,10 +753,33 @@ export const storage = {
     return newUser;
   },
 
+  getActiveSuperAdminCount(): number {
+    const data = ensureDataFile();
+    return data.users.filter(u => u.active && (u.role === 'Super Admin' || u.role === 'Admin')).length;
+  },
+
   updateUser(id: string, updates: Partial<AdminUser>): AdminUser | null {
     const data = ensureDataFile();
     const index = data.users.findIndex(u => u.id === id);
     if (index === -1) return null;
+
+    // Safeguard: Prevent accidental lockout/deactivation/demotion of the sole active Super Admin
+    const targetUser = data.users[index];
+    const isTargetSuperAdmin = targetUser.role === 'Super Admin' || targetUser.role === 'Admin';
+    if (isTargetSuperAdmin && targetUser.active) {
+      const activeSuperAdmins = data.users.filter(u => u.active && (u.role === 'Super Admin' || u.role === 'Admin'));
+      const isSoleSuperAdmin = activeSuperAdmins.length <= 1 && activeSuperAdmins[0].id === id;
+
+      if (isSoleSuperAdmin) {
+        if (updates.active === false) {
+          throw new Error('Cannot deactivate the last active Super Admin / Owner. Create another Super Admin first.');
+        }
+        if (updates.role && updates.role !== 'Super Admin' && updates.role !== 'Admin') {
+          throw new Error('Cannot demote the last active Super Admin / Owner. Create another Super Admin first.');
+        }
+      }
+    }
+
     data.users[index] = { ...data.users[index], ...updates };
     saveDataFile(data);
     return data.users[index];
@@ -562,6 +787,18 @@ export const storage = {
 
   deleteUser(id: string): boolean {
     const data = ensureDataFile();
+    const targetUser = data.users.find(u => u.id === id);
+    if (!targetUser) return false;
+
+    // Safeguard: Prevent deleting the last active Super Admin
+    const isTargetSuperAdmin = targetUser.role === 'Super Admin' || targetUser.role === 'Admin';
+    if (isTargetSuperAdmin && targetUser.active) {
+      const activeSuperAdmins = data.users.filter(u => u.active && (u.role === 'Super Admin' || u.role === 'Admin'));
+      if (activeSuperAdmins.length <= 1) {
+        throw new Error('Cannot delete the last active Super Admin / Owner. At least one Super Admin must remain.');
+      }
+    }
+
     const initialLen = data.users.length;
     data.users = data.users.filter(u => u.id !== id);
     if (data.users.length !== initialLen) {

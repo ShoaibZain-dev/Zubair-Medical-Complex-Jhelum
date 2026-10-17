@@ -19,68 +19,33 @@ export default function DoctorDetailPage({ params }: Props) {
   }
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
+  const doctorSchedules = storage.getSchedules(doctor.id);
 
-  // Compute exact schedule map for each day of the week
+  // Compute live availability from database schedules
   const getDayAvailability = (day: string) => {
-    if (day === 'Sunday') {
+    const dayShifts = doctorSchedules.filter(
+      s => s.active && s.day_of_week.toLowerCase() === day.toLowerCase()
+    );
+
+    if (dayShifts.length === 0) {
       return {
-        status: 'Sunday Off',
+        status: day === 'Sunday' ? 'Sunday Off' : 'Off-day',
         available: false,
-        timing: 'Off-day (No Consultations)',
+        timing: 'No Consultations Scheduled',
         badgeColor: 'bg-rose-100 text-rose-800 border-rose-200'
       };
     }
 
-    if (doctor.id === 'doc-zubair') {
-      return {
-        status: 'Available',
-        available: true,
-        timing: 'Morning: 9:00 AM – 2:00 PM | Evening: 5:00 PM – 8:00 PM',
-        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200'
-      };
-    }
-
-    if (doctor.id === 'doc-fozia') {
-      return {
-        status: 'Available',
-        available: true,
-        timing: 'Morning: 9:00 AM – 2:00 PM',
-        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200'
-      };
-    }
-
-    if (doctor.id === 'doc-arshad') {
-      if (day === 'Saturday') {
-        return {
-          status: 'Available',
-          available: true,
-          timing: '9:00 AM – 3:00 PM (Weekly Specialist Clinic)',
-          badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200'
-        };
-      } else {
-        return {
-          status: 'Unavailable',
-          available: false,
-          timing: 'No Consultation on this day',
-          badgeColor: 'bg-slate-100 text-slate-600 border-slate-200'
-        };
-      }
-    }
-
-    if (doctor.id === 'doc-umar') {
-      return {
-        status: 'Available',
-        available: true,
-        timing: 'Evening: 5:00 PM – 8:00 PM',
-        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200'
-      };
-    }
+    const shiftTimings = dayShifts.map(s => {
+      const p = s.period ? `${s.period.charAt(0).toUpperCase() + s.period.slice(1)}: ` : '';
+      return `${p}${s.start_time.slice(0, 5)} – ${s.end_time.slice(0, 5)}`;
+    }).join(' | ');
 
     return {
-      status: 'Check Desk',
-      available: false,
-      timing: 'Contact clinic',
-      badgeColor: 'bg-slate-100 text-slate-600 border-slate-200'
+      status: 'Available',
+      available: true,
+      timing: shiftTimings,
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200'
     };
   };
 
@@ -105,8 +70,12 @@ export default function DoctorDetailPage({ params }: Props) {
         <div className="p-6 sm:p-10">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pb-8 border-b border-slate-100">
             <div className="flex items-start gap-5">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-blue-50 border border-blue-200 flex items-center justify-center text-[#1E90FF] shadow-inner shrink-0">
-                <Stethoscope className="w-10 h-10 sm:w-12 sm:h-12 text-[#1E90FF]" />
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-blue-50 border border-blue-200 overflow-hidden flex items-center justify-center text-[#1E90FF] shadow-inner shrink-0">
+                {doctor.avatar_url ? (
+                  <img src={doctor.avatar_url} alt={doctor.name} className="w-full h-full object-cover" />
+                ) : (
+                  <Stethoscope className="w-10 h-10 sm:w-12 sm:h-12 text-[#1E90FF]" />
+                )}
               </div>
 
               <div className="space-y-1.5">

@@ -7,7 +7,8 @@
       "specialty": "Medical Specialist",
       "contact": "0318-3621341",
       "active": true,
-      "created_at": "2026-10-08T07:00:00.000Z"
+      "created_at": "2026-10-08T07:00:00.000Z",
+      "avatar_url": "/uploads/doctors/doc-1792265753053-b99e09ba.jpg"
     },
     {
       "id": "doc-fozia",
@@ -15,7 +16,8 @@
       "specialty": "Gynecologist / Consultant",
       "contact": "0318-3621341",
       "active": true,
-      "created_at": "2026-10-08T07:00:00.000Z"
+      "created_at": "2026-10-08T07:00:00.000Z",
+      "avatar_url": "/uploads/doctors/doc-1792266222525-efa0823d.jpg"
     },
     {
       "id": "doc-arshad",
@@ -25,7 +27,8 @@
       "contact": "0300-3918459",
       "social_media": "zubairmedicalcomplex",
       "active": true,
-      "created_at": "2026-10-08T07:00:00.000Z"
+      "created_at": "2026-10-08T07:00:00.000Z",
+      "avatar_url": "/uploads/doctors/doc-1792266133924-53f99f86.jpg"
     },
     {
       "id": "doc-umar",
@@ -33,7 +36,8 @@
       "specialty": "Laparoscopic Surgeon",
       "contact": "0318-3621341",
       "active": true,
-      "created_at": "2026-10-08T07:00:00.000Z"
+      "created_at": "2026-10-08T07:00:00.000Z",
+      "avatar_url": "/uploads/doctors/doc-1792265916257-9bea5452.jpg"
     }
   ],
   "schedules": [
@@ -802,7 +806,7 @@
     {
       "name": "zain",
       "email": "malikshoaibzain029@gmail.com",
-      "password_hash": "e6095c21b4f9de08f0256e728137840a:3205b35e6341f273cf454028198e3616b4d0c0e9b6d2e8b3f0d01055ac5e14c117ceed16920cadf52649919bc7d16818a46e013efcbc0976a4ed715cb8a1bca6",
+      "password_hash": "8ea40de43a0ddbb6804853de369c5cb4:34987cf8b3860ede0a307bbb9100e6d4991eaaad3a0edf7f80e02cf0df6b4fe04c7266d92a7e64da2a48a3e5493d2b9f2bd29597ffc6a05258262ea7d0ffaace",
       "role": "Admin",
       "active": true,
       "id": "usr-1791448588132",
@@ -861,11 +865,13 @@
     "notifications_enabled": "true",
     "default_slot_duration": "30",
     "meta_whatsapp_phone_number_id": "",
-    "meta_whatsapp_token": "",
+    "meta_whatsapp_token": "Admin123#",
     "twilio_account_sid": "",
-    "twilio_auth_token": "",
+    "twilio_auth_token": "Admin123#",
     "twilio_from_number": "",
-    "whatsapp_gateway_url": "http://localhost:5005"
+    "whatsapp_gateway_url": "http://localhost:5005",
+    "hospital_notification_whatsapp": "+92 315 6621341",
+    "hospital_notification_email": "malikshoaibzain029@gmail.com"
   },
   "notificationLogs": [
     {

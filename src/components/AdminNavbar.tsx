@@ -8,12 +8,14 @@ import {
   Share2, LogOut, ShieldCheck, Settings, ExternalLink, Smartphone 
 } from 'lucide-react';
 
+import { UserRole, isSuperAdmin, isHospitalAdminOrAbove } from '@/types';
+
 interface Props {
-  userRole?: 'Admin' | 'Receptionist';
+  userRole?: UserRole | string;
   userName?: string;
 }
 
-export default function AdminNavbar({ userRole = 'Receptionist', userName = 'Staff Member' }: Props) {
+export default function AdminNavbar({ userRole = 'Staff', userName = 'Staff Member' }: Props) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -27,17 +29,21 @@ export default function AdminNavbar({ userRole = 'Receptionist', userName = 'Sta
     }
   };
 
+  const isSuper = isSuperAdmin(userRole);
+  const isHospitalAdmin = isHospitalAdminOrAbove(userRole);
+
   const navItems = [
-    { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard, roles: ['Admin', 'Receptionist'] },
-    { name: 'Appointments', href: '/admin/appointments', icon: Calendar, roles: ['Admin', 'Receptionist'] },
-    { name: 'WhatsApp Web', href: '/admin/whatsapp', icon: Smartphone, roles: ['Admin', 'Receptionist'] },
-    { name: 'Doctors & Schedules', href: '/admin/doctors', icon: Stethoscope, roles: ['Admin'] },
-    { name: 'Notifications', href: '/admin/notifications', icon: Bell, roles: ['Admin'] },
-    { name: 'Social Links', href: '/admin/social', icon: Share2, roles: ['Admin'] },
-    { name: 'Staff Users', href: '/admin/users', icon: Users, roles: ['Admin'] },
+    { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard, visible: true },
+    { name: 'Appointments', href: '/admin/appointments', icon: Calendar, visible: true },
+    { name: 'WhatsApp Web', href: '/admin/whatsapp', icon: Smartphone, visible: true },
+    { name: 'Doctors & Schedules', href: '/admin/doctors', icon: Stethoscope, visible: isHospitalAdmin },
+    { name: 'Notifications', href: '/admin/notifications', icon: Bell, visible: isHospitalAdmin },
+    { name: 'Social Links', href: '/admin/social', icon: Share2, visible: isHospitalAdmin },
+    { name: 'Staff Users', href: '/admin/users', icon: Users, visible: isSuper },
   ];
 
-  const allowedItems = navItems.filter(item => item.roles.includes(userRole));
+  const allowedItems = navItems.filter(item => item.visible);
+
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-40">
@@ -97,8 +103,12 @@ export default function AdminNavbar({ userRole = 'Receptionist', userName = 'Sta
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <div className="text-xs font-bold text-white leading-tight">{userName}</div>
-              <span className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider ${
-                userRole === 'Admin' ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30' : 'bg-blue-400/20 text-blue-300 border border-blue-400/30'
+              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                isSuper
+                  ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
+                  : isHospitalAdmin
+                  ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/30'
+                  : 'bg-blue-400/20 text-blue-300 border border-blue-400/30'
               }`}>
                 {userRole}
               </span>
