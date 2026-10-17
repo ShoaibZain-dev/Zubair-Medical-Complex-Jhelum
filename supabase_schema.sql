@@ -233,11 +233,12 @@ FROM unnest(ARRAY['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satur
 
 -- Initial Social Media Links
 INSERT INTO social_media_links (platform, url, active) VALUES
-('Facebook', 'https://www.facebook.com/search/top?q=zubair%20medical%20complex%20jhelum', true),
-('Instagram', 'https://www.instagram.com/explore/tags/zubairmedicalcomplexjhelum/', true),
-('YouTube', 'https://www.youtube.com/results?search_query=zubair+medical+complex+jhelum', true),
-('WhatsApp', 'https://wa.me/923183621341', true)
-ON CONFLICT (platform) DO NOTHING;
+('Facebook', 'https://www.facebook.com/Zubair-Hospital-Jhelum-112557337892123/', true),
+('Instagram', 'https://www.instagram.com/zubairmedicalcomplex?igsh=MjhoNXU3bzV5dW54', true),
+('Google Maps', 'https://maps.app.goo.gl/nK3fJt1X6o5zNmK87', true),
+('WhatsApp', 'https://wa.me/923156621341', true),
+('YouTube', 'https://www.youtube.com/results?search_query=zubair+medical+complex+jhelum', true)
+ON CONFLICT (platform) DO UPDATE SET url = EXCLUDED.url;
 
 -- Initial System Settings
 INSERT INTO system_settings (setting_name, setting_value) VALUES

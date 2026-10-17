@@ -8,25 +8,31 @@ export default function SocialSection() {
     {
       id: 'fb',
       platform: 'Facebook',
-      url: 'https://www.facebook.com/search/top?q=zubair%20medical%20complex%20jhelum',
+      url: 'https://www.facebook.com/Zubair-Hospital-Jhelum-112557337892123/',
       active: true
     },
     {
       id: 'ig',
       platform: 'Instagram',
-      url: 'https://www.instagram.com/explore/tags/zubairmedicalcomplexjhelum/',
+      url: 'https://www.instagram.com/zubairmedicalcomplex?igsh=MjhoNXU3bzV5dW54',
       active: true
     },
     {
-      id: 'yt',
-      platform: 'YouTube',
-      url: 'https://www.youtube.com/results?search_query=zubair+medical+complex+jhelum',
+      id: 'map',
+      platform: 'Google Maps',
+      url: 'https://maps.app.goo.gl/nK3fJt1X6o5zNmK87',
       active: true
     },
     {
       id: 'wa',
       platform: 'WhatsApp',
       url: 'https://wa.me/923156621341',
+      active: true
+    },
+    {
+      id: 'yt',
+      platform: 'YouTube',
+      url: 'https://www.youtube.com/results?search_query=zubair+medical+complex+jhelum',
       active: true
     }
   ]);
@@ -36,14 +42,24 @@ export default function SocialSection() {
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
-          setLinks(data.filter(l => l.active));
+          const sanitized = data.map(link => {
+            if (link.platform.toLowerCase() === 'facebook' && link.url.includes('/search/')) {
+              return { ...link, url: 'https://www.facebook.com/Zubair-Hospital-Jhelum-112557337892123/' };
+            }
+            if (link.platform.toLowerCase() === 'instagram' && link.url.includes('/explore/tags/')) {
+              return { ...link, url: 'https://www.instagram.com/zubairmedicalcomplex?igsh=MjhoNXU3bzV5dW54' };
+            }
+            return link;
+          });
+          setLinks(sanitized.filter(l => l.active));
         }
       })
       .catch(() => {});
   }, []);
 
   const getPlatformIcon = (platform: string) => {
-    switch (platform.toLowerCase()) {
+    const key = platform.toLowerCase();
+    switch (key) {
       case 'facebook':
         return (
           <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
@@ -54,6 +70,14 @@ export default function SocialSection() {
         return (
           <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
             <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+          </svg>
+        );
+      case 'google maps':
+      case 'map':
+      case 'maps':
+        return (
+          <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/>
           </svg>
         );
       case 'youtube':
@@ -74,11 +98,16 @@ export default function SocialSection() {
   };
 
   const getPlatformColors = (platform: string) => {
-    switch (platform.toLowerCase()) {
+    const key = platform.toLowerCase();
+    switch (key) {
       case 'facebook':
         return 'bg-[#1877F2]/10 text-[#1877F2] hover:bg-[#1877F2] hover:text-white border-[#1877F2]/30';
       case 'instagram':
         return 'bg-[#E4405F]/10 text-[#E4405F] hover:bg-[#E4405F] hover:text-white border-[#E4405F]/30';
+      case 'google maps':
+      case 'map':
+      case 'maps':
+        return 'bg-[#EA4335]/10 text-[#EA4335] hover:bg-[#EA4335] hover:text-white border-[#EA4335]/30';
       case 'youtube':
         return 'bg-[#FF0000]/10 text-[#FF0000] hover:bg-[#FF0000] hover:text-white border-[#FF0000]/30';
       case 'whatsapp':

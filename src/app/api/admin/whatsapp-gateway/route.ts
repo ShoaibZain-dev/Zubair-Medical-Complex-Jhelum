@@ -90,6 +90,50 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: 'Initiated WhatsApp Gateway start.' });
     }
 
+    // Check for refresh / reset action
+    if (body.action === 'refresh' || body.action === 'reset') {
+      try {
+        const res = await fetch(`${gatewayUrl}/refresh-qr`, {
+          method: 'POST',
+          signal: AbortSignal.timeout(6000)
+        });
+        const data = await res.json();
+        return NextResponse.json(data);
+      } catch (err: any) {
+        return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+      }
+    }
+
+    // Check for pairing-code action
+    if (body.action === 'pairing-code') {
+      try {
+        const res = await fetch(`${gatewayUrl}/pairing-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: body.phone }),
+          signal: AbortSignal.timeout(15000)
+        });
+        const data = await res.json();
+        return NextResponse.json(data, { status: res.status });
+      } catch (err: any) {
+        return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+      }
+    }
+
+    // Check for disconnect action
+    if (body.action === 'disconnect') {
+      try {
+        const res = await fetch(`${gatewayUrl}/logout`, {
+          method: 'POST',
+          signal: AbortSignal.timeout(6000)
+        });
+        const data = await res.json();
+        return NextResponse.json(data);
+      } catch (err: any) {
+        return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+      }
+    }
+
     const res = await fetch(`${gatewayUrl}/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

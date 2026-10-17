@@ -5,7 +5,8 @@ import AdminNavbar from '@/components/AdminNavbar';
 import { 
   Smartphone, CheckCircle2, AlertCircle, RefreshCw, 
   Send, LogOut, ShieldCheck, Zap, MessageSquare, Clock,
-  Globe, Server, Play, ExternalLink, Settings2, Check
+  Globe, Server, Play, ExternalLink, Settings2, Check,
+  QrCode, Key, Copy, RotateCcw
 } from 'lucide-react';
 
 export default function AdminWhatsAppPage() {
@@ -19,6 +20,15 @@ export default function AdminWhatsAppPage() {
   const [savingUrl, setSavingUrl] = useState(false);
   const [urlSavedSuccess, setUrlSavedSuccess] = useState(false);
   const [isLiveProd, setIsLiveProd] = useState(false);
+
+  // QR refresh & Pairing Code states
+  const [refreshingQr, setRefreshingQr] = useState(false);
+  const [pairingMethod, setPairingMethod] = useState<'qr' | 'code'>('qr');
+  const [pairingPhone, setPairingPhone] = useState('03229131403');
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [requestingCode, setRequestingCode] = useState(false);
+  const [pairingError, setPairingError] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   // Test send states
   const [testTo, setTestTo] = useState('03229131403');
@@ -37,7 +47,11 @@ export default function AdminWhatsAppPage() {
       setGatewayRunning(running);
       setConnected(Boolean(data.connected));
       setUserPhone(data.user || null);
-      setQrCode(data.qr || null);
+      if (data.qr) {
+        setQrCode(data.qr);
+      } else if (data.connected) {
+        setQrCode(null);
+      }
       if (data.gatewayUrl) {
         setGatewayUrl(data.gatewayUrl);
         if (!customGatewayUrl) setCustomGatewayUrl(data.gatewayUrl);
@@ -53,9 +67,59 @@ export default function AdminWhatsAppPage() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 4000);
+    const interval = setInterval(fetchStatus, 3500);
     return () => clearInterval(interval);
   }, []);
+
+  const handleRefreshQr = async () => {
+    setRefreshingQr(true);
+    setPairingError(null);
+    try {
+      await fetch('/api/admin/whatsapp-gateway', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'refresh' })
+      });
+      setTimeout(async () => {
+        await fetchStatus();
+        setRefreshingQr(false);
+      }, 1500);
+    } catch {
+      setRefreshingQr(false);
+    }
+  };
+
+  const handleRequestPairingCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pairingPhone.trim()) return;
+    setRequestingCode(true);
+    setPairingError(null);
+    setPairingCode(null);
+    try {
+      const res = await fetch('/api/admin/whatsapp-gateway', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'pairing-code', phone: pairingPhone.trim() })
+      });
+      const data = await res.json();
+      if (data.success && data.pairingCode) {
+        setPairingCode(data.pairingCode);
+      } else {
+        setPairingError(data.error || 'Failed to generate pairing code. Please make sure gateway is running.');
+      }
+    } catch (err: any) {
+      setPairingError(err.message || 'Network error requesting pairing code.');
+    } finally {
+      setRequestingCode(false);
+    }
+  };
+
+  const handleCopyCode = () => {
+    if (!pairingCode) return;
+    navigator.clipboard.writeText(pairingCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
 
   const handleStartGateway = async () => {
     setStartingGateway(true);
@@ -276,76 +340,210 @@ export default function AdminWhatsAppPage() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {/* Instructions */}
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-2">
-                    <p className="font-bold text-slate-900">📱 How to pair your WhatsApp:</p>
-                    <ol className="list-decimal pl-4 space-y-1 text-slate-600 leading-relaxed">
-                      <li>Open <strong>WhatsApp</strong> on your mobile phone.</li>
-                      <li>Tap <strong>Settings</strong> (iPhone) or <strong>Three Dots ⋮</strong> (Android).</li>
-                      <li>Select <strong>Linked Devices</strong> &gt; tap <strong>Link a Device</strong>.</li>
-                      <li>Scan the QR code shown below with your phone camera.</li>
-                    </ol>
+                  {/* Pairing Method Selector Tabs */}
+                  <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl">
+                    <button
+                      type="button"
+                      onClick={() => setPairingMethod('qr')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all ${
+                        pairingMethod === 'qr'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      <QrCode className="w-4 h-4 text-[#1E90FF]" />
+                      <span>Scan QR Code</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPairingMethod('code')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all ${
+                        pairingMethod === 'code'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      <Key className="w-4 h-4 text-emerald-600" />
+                      <span>Link with Phone (Pairing Code)</span>
+                    </button>
                   </div>
 
-                  {/* QR Box */}
-                  <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-slate-200 min-h-[300px]">
-                    {qrCode ? (
-                      <div className="space-y-4 text-center">
-                        <div className="p-3 bg-white rounded-2xl shadow-md border border-slate-200 inline-block">
-                          <img
-                            src={qrCode}
-                            alt="WhatsApp Web QR Code"
-                            className="w-64 h-64 sm:w-72 sm:h-72 object-contain"
-                          />
-                        </div>
-                        <p className="text-xs text-slate-500 font-medium flex items-center justify-center gap-1.5">
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#1E90FF]" />
-                          <span>Waiting for phone scan... (Auto-refreshes)</span>
+                  {pairingMethod === 'qr' ? (
+                    <div className="space-y-5">
+                      {/* Instructions */}
+                      <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100 text-xs text-slate-700 space-y-2">
+                        <p className="font-bold text-slate-900 flex items-center gap-1.5">
+                          <Smartphone className="w-4 h-4 text-[#1E90FF]" />
+                          <span>How to pair with QR code:</span>
                         </p>
+                        <ol className="list-decimal pl-5 space-y-1 text-slate-600 leading-relaxed">
+                          <li>Open <strong>WhatsApp</strong> on your phone.</li>
+                          <li>Tap <strong>Settings</strong> (iOS) or <strong>Three dots ⋮</strong> (Android).</li>
+                          <li>Select <strong>Linked Devices</strong> &gt; tap <strong>Link a Device</strong>.</li>
+                          <li>Point your phone camera at the QR code below.</li>
+                        </ol>
                       </div>
-                    ) : gatewayRunning ? (
-                      <div className="py-12 text-center space-y-3">
-                        <div className="w-10 h-10 border-3 border-[#1E90FF] border-t-transparent rounded-full animate-spin mx-auto" />
-                        <p className="text-xs font-bold text-slate-700">
-                          Generating fresh WhatsApp QR Code...
-                        </p>
-                        <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
-                          Please wait a few seconds while the WhatsApp session establishes.
-                        </p>
+
+                      {/* QR Box */}
+                      <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-slate-200 min-h-[340px]">
+                        {qrCode ? (
+                          <div className="space-y-4 text-center">
+                            <div className="p-4 bg-white rounded-3xl shadow-lg border border-slate-200/80 inline-block">
+                              <img
+                                src={qrCode}
+                                alt="WhatsApp Web QR Code"
+                                className="w-64 h-64 sm:w-72 sm:h-72 object-contain rounded-xl"
+                              />
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
+                              <p className="text-xs text-slate-500 font-medium flex items-center justify-center gap-1.5">
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#1E90FF]" />
+                                <span>Waiting for phone scan...</span>
+                              </p>
+
+                              <button
+                                type="button"
+                                onClick={handleRefreshQr}
+                                disabled={refreshingQr}
+                                className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 shadow-2xs transition-colors cursor-pointer"
+                                title="Generate a fresh QR code if expired"
+                              >
+                                <RotateCcw className={`w-3.5 h-3.5 ${refreshingQr ? 'animate-spin text-[#1E90FF]' : ''}`} />
+                                <span>{refreshingQr ? 'Refreshing QR...' : 'Regenerate QR Code'}</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : gatewayRunning ? (
+                          <div className="py-12 text-center space-y-4">
+                            <div className="w-12 h-12 border-3 border-[#1E90FF] border-t-transparent rounded-full animate-spin mx-auto" />
+                            <div>
+                              <p className="text-sm font-bold text-slate-800">
+                                Generating fresh WhatsApp QR Code...
+                              </p>
+                              <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+                                Connecting to WhatsApp servers. Your QR code will appear in a moment.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleRefreshQr}
+                              disabled={refreshingQr}
+                              className="inline-flex items-center gap-1.5 py-2 px-4 rounded-xl text-xs font-bold text-[#1E90FF] bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors"
+                            >
+                              <RotateCcw className={`w-3.5 h-3.5 ${refreshingQr ? 'animate-spin' : ''}`} />
+                              <span>Force Refresh QR Code</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="py-8 text-center space-y-4 max-w-md mx-auto">
+                            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+                              <AlertCircle className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-slate-900">WhatsApp Gateway Not Running</h4>
+                              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                Start the local WhatsApp gateway to enable QR code pairing.
+                              </p>
+                            </div>
+
+                            <div className="p-3 bg-white rounded-xl border border-slate-200 text-left text-xs space-y-2">
+                              <p className="font-semibold text-slate-800">Run in a terminal on your machine:</p>
+                              <code className="block bg-slate-900 text-emerald-400 p-2 rounded-lg font-mono text-[11px]">
+                                npm run whatsapp
+                              </code>
+                              <p className="text-[11px] text-slate-500">
+                                Or click below to launch automatically:
+                              </p>
+                              <button
+                                type="button"
+                                onClick={handleStartGateway}
+                                disabled={startingGateway}
+                                className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold bg-[#1E90FF] hover:bg-blue-600 text-white transition-colors cursor-pointer"
+                              >
+                                <Play className="w-3.5 h-3.5" />
+                                <span>{startingGateway ? 'Starting Gateway...' : 'Start Local Gateway Now'}</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="py-8 text-center space-y-4 max-w-md mx-auto">
-                        <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
-                          <AlertCircle className="w-6 h-6" />
-                        </div>
+                    </div>
+                  ) : (
+                    /* Pairing Code via Phone Number */
+                    <div className="space-y-5">
+                      <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-xs text-slate-700 space-y-2">
+                        <p className="font-bold text-emerald-950 flex items-center gap-1.5">
+                          <Key className="w-4 h-4 text-emerald-600" />
+                          <span>Link via 8-Digit Pairing Code (No Camera Needed)</span>
+                        </p>
+                        <ol className="list-decimal pl-5 space-y-1 text-slate-600 leading-relaxed">
+                          <li>Enter the hospital or reception WhatsApp phone number below.</li>
+                          <li>Click <strong>&quot;Get Pairing Code&quot;</strong> to receive your 8-digit code.</li>
+                          <li>Open WhatsApp on phone &gt; <strong>Linked Devices</strong> &gt; <strong>Link a Device</strong>.</li>
+                          <li>Tap <strong>&quot;Link with phone number instead&quot;</strong> at the bottom of your phone screen.</li>
+                          <li>Type the 8-digit code shown here.</li>
+                        </ol>
+                      </div>
+
+                      <form onSubmit={handleRequestPairingCode} className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
                         <div>
-                          <h4 className="text-sm font-bold text-slate-900">WhatsApp Gateway Not Running</h4>
-                          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                            Start the local WhatsApp gateway to enable QR code pairing.
+                          <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                            WhatsApp Phone Number (with Country Code)
+                          </label>
+                          <input
+                            type="text"
+                            value={pairingPhone}
+                            onChange={(e) => setPairingPhone(e.target.value)}
+                            placeholder="03229131403 or +923229131403"
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-[#1E90FF]"
+                          />
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            Format: 03XXXXXXXXX or +923XXXXXXXXX
                           </p>
                         </div>
 
-                        <div className="p-3 bg-white rounded-xl border border-slate-200 text-left text-xs space-y-2">
-                          <p className="font-semibold text-slate-800">Run in a terminal on your machine:</p>
-                          <code className="block bg-slate-900 text-emerald-400 p-2 rounded-lg font-mono text-[11px]">
-                            npm run whatsapp
-                          </code>
-                          <p className="text-[11px] text-slate-500">
-                            Or click below to try launching automatically:
-                          </p>
-                          <button
-                            type="button"
-                            onClick={handleStartGateway}
-                            disabled={startingGateway}
-                            className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold bg-[#1E90FF] hover:bg-blue-600 text-white transition-colors cursor-pointer"
-                          >
-                            <Play className="w-3.5 h-3.5" />
-                            <span>{startingGateway ? 'Starting Gateway...' : 'Start Local Gateway Now'}</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                        {pairingError && (
+                          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium">
+                            {pairingError}
+                          </div>
+                        )}
+
+                        <button
+                          type="submit"
+                          disabled={requestingCode || !pairingPhone.trim()}
+                          className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 transition-colors cursor-pointer"
+                        >
+                          <Key className={`w-4 h-4 ${requestingCode ? 'animate-spin' : ''}`} />
+                          <span>{requestingCode ? 'Requesting Code from WhatsApp...' : 'Get 8-Digit Pairing Code'}</span>
+                        </button>
+
+                        {pairingCode && (
+                          <div className="p-5 bg-white rounded-2xl border-2 border-emerald-500 text-center space-y-3">
+                            <span className="text-[11px] uppercase tracking-wider font-bold text-slate-500">
+                              Your WhatsApp Pairing Code
+                            </span>
+                            <div className="text-3xl sm:text-4xl font-mono font-black tracking-widest text-slate-900 select-all">
+                              {pairingCode}
+                            </div>
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={handleCopyCode}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold transition-colors cursor-pointer"
+                              >
+                                {copiedCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                <span>{copiedCode ? 'Copied Code!' : 'Copy Code'}</span>
+                              </button>
+                            </div>
+                            <p className="text-[11px] text-slate-500">
+                              Enter this code on your phone within 60 seconds to link.
+                            </p>
+                          </div>
+                        )}
+                      </form>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -7,7 +7,8 @@ import qrcodeTerminal from 'qrcode-terminal';
 import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
-  fetchLatestBaileysVersion
+  fetchLatestBaileysVersion,
+  Browsers
 } from '@whiskeysockets/baileys';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,6 +23,7 @@ let currentQrRaw = null;
 let isConnected = false;
 let connectedUser = null;
 let isStarting = false;
+let pairingCode = null;
 
 // Normalize Pakistani / International phone to JID (e.g. 923001234567@s.whatsapp.net)
 function formatToJid(phone) {
@@ -34,6 +36,43 @@ function formatToJid(phone) {
   return `${digits}@s.whatsapp.net`;
 }
 
+function normalizePhoneDigits(phone) {
+  let digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('0') && digits.length === 11) {
+    digits = '92' + digits.slice(1);
+  } else if (digits.startsWith('3') && digits.length === 10) {
+    digits = '92' + digits;
+  }
+  return digits;
+}
+
+function cleanSessionFolder() {
+  try {
+    if (fs.existsSync(SESSION_DIR)) {
+      const files = fs.readdirSync(SESSION_DIR);
+      for (const file of files) {
+        try {
+          fs.rmSync(path.join(SESSION_DIR, file), { recursive: true, force: true });
+        } catch (e) {
+          // ignore single file busy locks
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[WhatsApp Gateway] Error cleaning session folder:', err.message);
+  }
+}
+
+async function closeCurrentSocket() {
+  if (sock) {
+    try {
+      sock.ev?.removeAllListeners();
+      sock.ws?.close();
+    } catch (e) {}
+    sock = null;
+  }
+}
+
 async function startWhatsApp() {
   if (isStarting) return;
   isStarting = true;
@@ -44,14 +83,18 @@ async function startWhatsApp() {
     }
 
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
-    const { version } = await fetchLatestBaileysVersion();
+    const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: [2, 3000, 1015901307] }));
+
+    await closeCurrentSocket();
 
     sock = makeWASocket({
       version,
       auth: state,
-      printQRInTerminal: false,
-      browser: ['Zubair Medical Complex', 'Chrome', '120.0.0'],
-      syncFullHistory: false
+      browser: Browsers.windows('Desktop'),
+      syncFullHistory: false,
+      connectTimeoutMs: 60000,
+      defaultQueryTimeoutMs: 60000,
+      keepAliveIntervalMs: 25000
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -62,46 +105,59 @@ async function startWhatsApp() {
       if (qr) {
         currentQrRaw = qr;
         try {
-          currentQrDataUrl = await QRCode.toDataURL(qr, { margin: 2, scale: 6 });
+          currentQrDataUrl = await QRCode.toDataURL(qr, { 
+            margin: 2, 
+            scale: 8,
+            errorCorrectionLevel: 'M',
+            color: {
+              dark: '#0f172a',
+              light: '#ffffff'
+            }
+          });
         } catch (e) {
-          console.error('QR code generation error:', e);
+          console.error('[WhatsApp Gateway] QR code generation error:', e);
         }
 
         console.log('\n=============================================================');
         console.log('  📱 ZUBAIR MEDICAL COMPLEX: WHATSAPP WEB QR CODE');
         console.log('  Open WhatsApp on phone > Linked Devices > Link a Device > Scan:');
         console.log('=============================================================');
-        qrcodeTerminal.generate(qr, { small: true });
+        try {
+          qrcodeTerminal.generate(qr, { small: true });
+        } catch {}
         console.log('=============================================================\n');
       }
 
       if (connection === 'close') {
         isConnected = false;
         connectedUser = null;
-        currentQrDataUrl = null;
-        currentQrRaw = null;
+        pairingCode = null;
 
         const statusCode = lastDisconnect?.error?.output?.statusCode;
         const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
         console.log(`[WhatsApp Gateway] Connection closed (code: ${statusCode}). Reconnecting: ${shouldReconnect}`);
 
-        if (statusCode === DisconnectReason.loggedOut) {
-          console.log('[WhatsApp Gateway] Logged out. Clearing session directory...');
-          try {
-            fs.rmSync(SESSION_DIR, { recursive: true, force: true });
-          } catch {}
+        if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
+          console.log('[WhatsApp Gateway] Logged out or session expired. Resetting session directory...');
+          cleanSessionFolder();
+          currentQrDataUrl = null;
+          currentQrRaw = null;
+          isStarting = false;
+          setTimeout(() => startWhatsApp(), 1500);
+          return;
         }
 
         isStarting = false;
         if (shouldReconnect) {
-          setTimeout(() => startWhatsApp(), 3000);
+          setTimeout(() => startWhatsApp(), 2500);
         }
       } else if (connection === 'open') {
         isConnected = true;
         isStarting = false;
         currentQrDataUrl = null;
         currentQrRaw = null;
+        pairingCode = null;
         connectedUser = sock.user?.id ? sock.user.id.split(':')[0] : 'Connected';
 
         console.log('\n=============================================================');
@@ -114,7 +170,7 @@ async function startWhatsApp() {
   } catch (err) {
     isStarting = false;
     console.error('[WhatsApp Gateway] Init error:', err);
-    setTimeout(() => startWhatsApp(), 5000);
+    setTimeout(() => startWhatsApp(), 4000);
   }
 }
 
@@ -141,8 +197,65 @@ const server = http.createServer(async (req, res) => {
       connected: isConnected,
       user: connectedUser,
       qr: currentQrDataUrl,
-      hasQr: !!currentQrDataUrl
+      hasQr: !!currentQrDataUrl,
+      pairingCode: pairingCode
     }));
+    return;
+  }
+
+  // POST /pairing-code
+  if (req.method === 'POST' && url.pathname === '/pairing-code') {
+    let bodyStr = '';
+    req.on('data', chunk => { bodyStr += chunk; });
+    req.on('end', async () => {
+      try {
+        const body = JSON.parse(bodyStr || '{}');
+        const phone = body.phone;
+        if (!phone) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Phone number is required.' }));
+          return;
+        }
+
+        const digits = normalizePhoneDigits(phone);
+        if (!sock || !sock.requestPairingCode) {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'WhatsApp service not ready. Please try again in 5 seconds.' }));
+          return;
+        }
+
+        const code = await sock.requestPairingCode(digits);
+        pairingCode = code;
+        console.log(`[WhatsApp Gateway] Pairing code generated for ${digits}: ${code}`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, pairingCode: code, phone: digits }));
+      } catch (err) {
+        console.error('[WhatsApp Gateway] Pairing code error:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message || 'Failed to request pairing code' }));
+      }
+    });
+    return;
+  }
+
+  // POST /refresh-qr or POST /reset
+  if (req.method === 'POST' && (url.pathname === '/refresh-qr' || url.pathname === '/reset')) {
+    try {
+      await closeCurrentSocket();
+      cleanSessionFolder();
+      isConnected = false;
+      connectedUser = null;
+      currentQrDataUrl = null;
+      currentQrRaw = null;
+      pairingCode = null;
+      isStarting = false;
+      setTimeout(() => startWhatsApp(), 1000);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, message: 'Resetting session and generating fresh QR code...' }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: e.message }));
+    }
     return;
   }
 
@@ -190,14 +303,19 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/logout') {
     try {
       if (sock) {
-        await sock.logout().catch(() => {});
+        try {
+          await sock.logout().catch(() => {});
+        } catch {}
       }
-      try {
-        fs.rmSync(SESSION_DIR, { recursive: true, force: true });
-      } catch {}
+      await closeCurrentSocket();
+      cleanSessionFolder();
       isConnected = false;
       connectedUser = null;
-      setTimeout(() => startWhatsApp(), 1000);
+      currentQrDataUrl = null;
+      currentQrRaw = null;
+      pairingCode = null;
+      isStarting = false;
+      setTimeout(() => startWhatsApp(), 1200);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true, message: 'Logged out. Generating fresh QR...' }));
     } catch (e) {

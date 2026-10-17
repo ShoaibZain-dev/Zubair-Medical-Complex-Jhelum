@@ -59,7 +59,7 @@ export interface AdminUser {
 
 export interface SocialMediaLink {
   id: string;
-  platform: 'Facebook' | 'Instagram' | 'YouTube' | 'WhatsApp';
+  platform: 'Facebook' | 'Instagram' | 'YouTube' | 'WhatsApp' | 'Google Maps' | string;
   url: string;
   active: boolean;
 }

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { Doctor, DoctorSchedule, Appointment, AdminUser, SocialMediaLink, SystemSetting, NotificationLog } from '../types';
+import { Doctor, DoctorSchedule, Appointment, AdminUser, SocialMediaLink, SystemSetting, NotificationLog } from '../types/index';
 
 // Extended NotificationLog with WhatsApp tracking fields (stored but not in public types)
 interface NotificationLogExtended extends NotificationLog {
@@ -133,25 +133,31 @@ const INITIAL_SOCIAL_LINKS: SocialMediaLink[] = [
   {
     id: 'soc-fb',
     platform: 'Facebook',
-    url: 'https://www.facebook.com/search/top?q=zubair%20medical%20complex%20jhelum',
+    url: 'https://www.facebook.com/Zubair-Hospital-Jhelum-112557337892123/',
     active: true
   },
   {
     id: 'soc-ig',
     platform: 'Instagram',
-    url: 'https://www.instagram.com/explore/tags/zubairmedicalcomplexjhelum/',
+    url: 'https://www.instagram.com/zubairmedicalcomplex?igsh=MjhoNXU3bzV5dW54',
     active: true
   },
   {
-    id: 'soc-yt',
-    platform: 'YouTube',
-    url: 'https://www.youtube.com/results?search_query=zubair+medical+complex+jhelum',
+    id: 'soc-map',
+    platform: 'Google Maps',
+    url: 'https://maps.app.goo.gl/nK3fJt1X6o5zNmK87',
     active: true
   },
   {
     id: 'soc-wa',
     platform: 'WhatsApp',
     url: 'https://wa.me/923156621341',
+    active: true
+  },
+  {
+    id: 'soc-yt',
+    platform: 'YouTube',
+    url: 'https://www.youtube.com/results?search_query=zubair+medical+complex+jhelum',
     active: true
   }
 ];
@@ -197,8 +203,17 @@ function ensureDataFile(): DatabaseData {
   try {
     if (fs.existsSync(FALLBACK_DB_FILE)) {
       const raw = fs.readFileSync(FALLBACK_DB_FILE, 'utf8');
-      memoryDbData = JSON.parse(raw);
-      return memoryDbData!;
+      const parsed = JSON.parse(raw);
+      memoryDbData = {
+        doctors: parsed.doctors || INITIAL_DOCTORS,
+        schedules: parsed.schedules || INITIAL_SCHEDULES,
+        appointments: parsed.appointments || [],
+        users: parsed.users || [],
+        socialLinks: (parsed.socialLinks && parsed.socialLinks.length > 0) ? parsed.socialLinks : INITIAL_SOCIAL_LINKS,
+        settings: parsed.settings || INITIAL_SETTINGS,
+        notificationLogs: parsed.notificationLogs || []
+      };
+      return memoryDbData;
     }
   } catch (error) {
     console.error('Error reading fallback database file:', error);
@@ -208,8 +223,17 @@ function ensureDataFile(): DatabaseData {
   try {
     if (fs.existsSync(PRIMARY_DB_FILE)) {
       const raw = fs.readFileSync(PRIMARY_DB_FILE, 'utf8');
-      memoryDbData = JSON.parse(raw);
-      return memoryDbData!;
+      const parsed = JSON.parse(raw);
+      memoryDbData = {
+        doctors: parsed.doctors || INITIAL_DOCTORS,
+        schedules: parsed.schedules || INITIAL_SCHEDULES,
+        appointments: parsed.appointments || [],
+        users: parsed.users || [],
+        socialLinks: (parsed.socialLinks && parsed.socialLinks.length > 0) ? parsed.socialLinks : INITIAL_SOCIAL_LINKS,
+        settings: parsed.settings || INITIAL_SETTINGS,
+        notificationLogs: parsed.notificationLogs || []
+      };
+      return memoryDbData;
     }
   } catch (error) {
     console.error('Error reading primary database file:', error);
@@ -464,6 +488,38 @@ export const storage = {
 
   getSocialLinks(): SocialMediaLink[] {
     const data = ensureDataFile();
+    if (!data.socialLinks || data.socialLinks.length === 0) {
+      data.socialLinks = INITIAL_SOCIAL_LINKS;
+      saveDataFile(data);
+      return data.socialLinks;
+    }
+
+    let changed = false;
+    data.socialLinks = data.socialLinks.map(link => {
+      if (link.platform.toLowerCase() === 'facebook' && link.url.includes('/search/')) {
+        changed = true;
+        return { ...link, url: 'https://www.facebook.com/Zubair-Hospital-Jhelum-112557337892123/' };
+      }
+      if (link.platform.toLowerCase() === 'instagram' && link.url.includes('/explore/tags/')) {
+        changed = true;
+        return { ...link, url: 'https://www.instagram.com/zubairmedicalcomplex?igsh=MjhoNXU3bzV5dW54' };
+      }
+      return link;
+    });
+
+    if (!data.socialLinks.some(l => l.platform.toLowerCase().includes('map'))) {
+      data.socialLinks.splice(2, 0, {
+        id: 'soc-map',
+        platform: 'Google Maps',
+        url: 'https://maps.app.goo.gl/nK3fJt1X6o5zNmK87',
+        active: true
+      });
+      changed = true;
+    }
+
+    if (changed) {
+      saveDataFile(data);
+    }
     return data.socialLinks;
   },
 
