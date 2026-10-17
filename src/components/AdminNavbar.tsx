@@ -50,27 +50,27 @@ export default function AdminNavbar({ userRole = 'Staff', userName = 'Staff Memb
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand */}
-          <div className="flex items-center gap-4">
-            <Link href="/admin/dashboard" className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full overflow-hidden bg-white shrink-0 border border-slate-700">
-                <img src="/logo.png" alt="ZMC Logo" className="w-full h-full object-contain" />
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+            <Link href="/admin/dashboard" className="flex items-center gap-2.5 sm:gap-3 shrink-0 group">
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-white shrink-0 border border-slate-700/80 shadow-xs flex items-center justify-center p-0.5 group-hover:scale-105 transition-transform duration-150">
+                <img src="/logo.png" alt="ZMC Logo" className="w-full h-full object-contain object-center" />
               </div>
-              <div>
-                <span className="font-bold text-sm tracking-tight block leading-tight">
+              <div className="flex flex-col justify-center">
+                <span className="font-bold text-sm tracking-tight text-white leading-tight whitespace-nowrap">
                   Admin Portal
                 </span>
-                <span className="text-[10px] text-blue-300 uppercase tracking-widest font-semibold">
+                <span className="text-[10px] sm:text-[11px] text-blue-300 font-semibold tracking-wide uppercase leading-tight whitespace-nowrap">
                   Zubair Medical Complex
                 </span>
               </div>
             </Link>
 
-            <span className="text-slate-700 hidden md:inline">|</span>
+            <span className="text-slate-700 hidden xl:inline">|</span>
 
             <Link
               href="/"
               target="_blank"
-              className="hidden md:inline-flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors"
+              className="hidden xl:inline-flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors whitespace-nowrap"
             >
               <span>View Public Site</span>
               <ExternalLink className="w-3 h-3" />

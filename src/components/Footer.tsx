@@ -37,11 +37,11 @@ export default function Footer() {
                   className="w-full h-full object-contain object-center"
                 />
               </div>
-              <div>
+              <div className="flex flex-col justify-center">
                 <span className="block font-bold text-white text-base leading-tight">
                   {t('hospital_name')}
                 </span>
-                <span className="text-xs text-[#00BFFF] font-semibold tracking-wider uppercase">
+                <span className="text-xs text-[#00BFFF] font-semibold tracking-wider uppercase mt-0.5 leading-tight">
                   {t('hospital_address')}
                 </span>
               </div>

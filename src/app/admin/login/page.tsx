@@ -283,16 +283,18 @@ export default function AdminLoginPage() {
     <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
         {/* Hospital Branding Header */}
-        <div className="text-center space-y-2">
-          <div className="w-20 h-20 rounded-full overflow-hidden shadow-xl shadow-blue-500/10 mx-auto border-2 border-slate-200 bg-white">
-            <img src="/logo.png" alt="Zubair Medical Complex Jhelum" className="w-full h-full object-contain" />
+        <div className="text-center space-y-3">
+          <div className="w-20 h-20 rounded-full overflow-hidden shadow-xl shadow-blue-500/10 mx-auto border-2 border-slate-200 bg-white flex items-center justify-center p-1">
+            <img src="/logo.png" alt="Zubair Medical Complex Jhelum" className="w-full h-full object-contain object-center" />
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            {needsSetup ? 'Initial Admin Setup' : 'Staff & Admin Portal'}
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500">
-            Zubair Medical Complex • Kala Gujran, Jhelum, Punjab, Pakistan
-          </p>
+          <div className="space-y-1">
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              {needsSetup ? 'Initial Admin Setup' : 'Staff & Admin Portal'}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">
+              Zubair Medical Complex • Kala Gujran, Jhelum, Punjab, Pakistan
+            </p>
+          </div>
         </div>
 
         {error && (

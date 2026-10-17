@@ -120,8 +120,8 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 sm:h-20">
           {/* Logo & Hospital Brand */}
-          <Link href="/" className="flex items-center gap-2 sm:gap-3 group min-w-0 flex-1 lg:flex-none">
-            <div className="w-9 h-9 xs:w-10 xs:h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200 border-2 border-white bg-white shrink-0 flex items-center justify-center p-0.5">
+          <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group min-w-0 flex-1 lg:flex-none">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200 border-2 border-white bg-white shrink-0 flex items-center justify-center p-0.5">
               <img
                 src="/logo.png"
                 alt="Zubair Medical Complex Jhelum"
@@ -129,10 +129,10 @@ export default function Navbar() {
               />
             </div>
             <div className="min-w-0 flex-1 lg:flex-none flex flex-col justify-center">
-              <span className="block font-extrabold text-[13px] xs:text-sm sm:text-base md:text-lg lg:text-xl text-slate-900 tracking-tight leading-tight group-hover:text-[#1E90FF] transition-colors truncate">
+              <span className="block font-extrabold text-sm sm:text-base md:text-lg lg:text-xl text-slate-900 tracking-tight leading-tight group-hover:text-[#1E90FF] transition-colors truncate">
                 {t('hospital_name')}
               </span>
-              <span className="block text-[8.5px] xs:text-[9.5px] sm:text-[11px] lg:text-xs font-semibold text-[#4682B4] tracking-normal sm:tracking-wider uppercase mt-0.5 leading-tight truncate">
+              <span className="block text-[9px] sm:text-[11px] lg:text-xs font-semibold text-[#4682B4] tracking-normal sm:tracking-wider uppercase mt-0.5 leading-tight truncate">
                 {t('hospital_address')}
               </span>
             </div>
