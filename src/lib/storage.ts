@@ -201,27 +201,7 @@ function ensureDataFile(): DatabaseData {
     notificationLogs: []
   };
 
-  // 1. Try reading from fallback (temp) file if it exists
-  try {
-    if (fs.existsSync(FALLBACK_DB_FILE)) {
-      const raw = fs.readFileSync(FALLBACK_DB_FILE, 'utf8');
-      const parsed = JSON.parse(raw);
-      memoryDbData = {
-        doctors: parsed.doctors || INITIAL_DOCTORS,
-        schedules: parsed.schedules || INITIAL_SCHEDULES,
-        appointments: parsed.appointments || [],
-        users: parsed.users || [],
-        socialLinks: (parsed.socialLinks && parsed.socialLinks.length > 0) ? parsed.socialLinks : INITIAL_SOCIAL_LINKS,
-        settings: parsed.settings || INITIAL_SETTINGS,
-        notificationLogs: parsed.notificationLogs || []
-      };
-      return memoryDbData;
-    }
-  } catch (error) {
-    console.error('Error reading fallback database file:', error);
-  }
-
-  // 2. Try reading from primary project file if it exists
+  // 1. Try reading from primary project file if it exists (local dev / server)
   try {
     if (fs.existsSync(PRIMARY_DB_FILE)) {
       const raw = fs.readFileSync(PRIMARY_DB_FILE, 'utf8');
@@ -241,6 +221,26 @@ function ensureDataFile(): DatabaseData {
     console.error('Error reading primary database file:', error);
   }
 
+  // 2. Try reading from fallback (temp) file if it exists (Vercel serverless / ephemeral)
+  try {
+    if (fs.existsSync(FALLBACK_DB_FILE)) {
+      const raw = fs.readFileSync(FALLBACK_DB_FILE, 'utf8');
+      const parsed = JSON.parse(raw);
+      memoryDbData = {
+        doctors: parsed.doctors || INITIAL_DOCTORS,
+        schedules: parsed.schedules || INITIAL_SCHEDULES,
+        appointments: parsed.appointments || [],
+        users: parsed.users || [],
+        socialLinks: (parsed.socialLinks && parsed.socialLinks.length > 0) ? parsed.socialLinks : INITIAL_SOCIAL_LINKS,
+        settings: parsed.settings || INITIAL_SETTINGS,
+        notificationLogs: parsed.notificationLogs || []
+      };
+      return memoryDbData;
+    }
+  } catch (error) {
+    console.error('Error reading fallback database file:', error);
+  }
+
   // 3. Fallback to initial default data (kept in memory, no disk write needed on initial read)
   memoryDbData = initialData;
   return memoryDbData;
@@ -249,25 +249,19 @@ function ensureDataFile(): DatabaseData {
 function saveDataFile(data: DatabaseData): void {
   memoryDbData = data;
 
-  // If running on Vercel serverless environment, write directly to /tmp
-  const isVercel = Boolean(process.env.VERCEL || process.env.NEXT_PUBLIC_VERCEL_ENV);
-
-  if (!isVercel) {
-    // Attempt writing to Primary path (local development)
-    try {
-      if (!fs.existsSync(PRIMARY_DATA_DIR)) {
-        fs.mkdirSync(PRIMARY_DATA_DIR, { recursive: true });
-      }
-      const tempFile = `${PRIMARY_DB_FILE}.tmp`;
-      fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
-      fs.renameSync(tempFile, PRIMARY_DB_FILE);
-      return;
-    } catch (error) {
-      // Primary path is read-only
+  // 1. Attempt writing to Primary path (local development)
+  try {
+    if (!fs.existsSync(PRIMARY_DATA_DIR)) {
+      fs.mkdirSync(PRIMARY_DATA_DIR, { recursive: true });
     }
+    const tempFile = `${PRIMARY_DB_FILE}.tmp`;
+    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
+    fs.renameSync(tempFile, PRIMARY_DB_FILE);
+  } catch (error) {
+    // Primary path may be read-only in serverless environments (Vercel)
   }
 
-  // Fallback: Write to OS temp directory (/tmp)
+  // 2. Also write to OS temp directory (/tmp)
   try {
     const tempFile = `${FALLBACK_DB_FILE}.tmp`;
     fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');

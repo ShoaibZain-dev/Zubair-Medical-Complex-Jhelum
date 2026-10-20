@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import WhatsAppNotificationCard from '@/components/WhatsAppNotificationCard';
 import { useLanguage } from '@/context/LanguageContext';
+import { getDoctorDisplayName as getDoctorNameUtil, getDoctorDisplaySpecialty as getDoctorSpecialtyUtil } from '@/lib/doctorUtils';
 
 export default function AppointmentConfirmationPage() {
   const params = useParams();
@@ -120,25 +121,17 @@ Please arrive 10-15 minutes prior to your consultation time.`;
 
   // Doctor Urdu name helper
   const getDoctorDisplayName = (docId?: string, fallback?: string) => {
-    if (!isUrdu) return fallback || doctor?.name || 'Medical Consultant';
-    switch (docId || doctor?.id) {
-      case 'doc-zubair': return t('doc_zubair_name');
-      case 'doc-fozia': return t('doc_fozia_name');
-      case 'doc-arshad': return t('doc_arshad_name');
-      case 'doc-umar': return t('doc_umar_name');
-      default: return fallback || doctor?.name || 'کنسلٹنٹ ڈاکٹر';
+    if (doctor) {
+      return getDoctorNameUtil(doctor, isUrdu, t);
     }
+    return fallback || 'Medical Consultant';
   };
 
   const getSpecialtyDisplayName = (docId?: string, fallback?: string) => {
-    if (!isUrdu) return fallback || appointment.specialty;
-    switch (docId || doctor?.id) {
-      case 'doc-zubair': return t('doc_zubair_specialty');
-      case 'doc-fozia': return t('doc_fozia_specialty');
-      case 'doc-arshad': return t('doc_arshad_specialty');
-      case 'doc-umar': return t('doc_umar_specialty');
-      default: return fallback || appointment.specialty;
+    if (doctor) {
+      return getDoctorSpecialtyUtil(doctor, isUrdu, t);
     }
+    return fallback || appointment.specialty;
   };
 
   return (

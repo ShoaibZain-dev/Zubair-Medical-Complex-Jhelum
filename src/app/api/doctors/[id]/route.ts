@@ -4,6 +4,9 @@ import { getSessionUser } from '@/lib/auth';
 import { isHospitalAdminOrAbove } from '@/types';
 import { deleteDoctorPhotoFromSupabase } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

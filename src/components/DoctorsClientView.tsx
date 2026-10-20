@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Doctor } from '@/types';
+import { Doctor, DoctorSchedule } from '@/types';
 import DoctorCard from '@/components/DoctorCard';
 import { Stethoscope, Phone } from 'lucide-react';
 import Link from 'next/link';
@@ -9,10 +9,23 @@ import { useLanguage } from '@/context/LanguageContext';
 
 interface DoctorsClientViewProps {
   doctors: Doctor[];
+  schedules?: DoctorSchedule[];
 }
 
-export default function DoctorsClientView({ doctors }: DoctorsClientViewProps) {
+export default function DoctorsClientView({ doctors, schedules = [] }: DoctorsClientViewProps) {
   const { isUrdu } = useLanguage();
+  const [doctorList, setDoctorList] = React.useState<Doctor[]>(doctors);
+  const [scheduleList, setScheduleList] = React.useState<DoctorSchedule[]>(schedules);
+
+  React.useEffect(() => {
+    Promise.all([
+      fetch('/api/doctors').then(r => r.json()),
+      fetch('/api/schedules').then(r => r.json())
+    ]).then(([docs, schs]) => {
+      if (Array.isArray(docs)) setDoctorList(docs);
+      if (Array.isArray(schs)) setScheduleList(schs);
+    }).catch(() => {});
+  }, []);
 
   return (
     <div className="py-12 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
@@ -34,8 +47,12 @@ export default function DoctorsClientView({ doctors }: DoctorsClientViewProps) {
 
       {/* Doctor Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {doctors.map(doctor => (
-          <DoctorCard key={doctor.id} doctor={doctor} />
+        {doctorList.map(doctor => (
+          <DoctorCard 
+            key={doctor.id} 
+            doctor={doctor} 
+            schedules={scheduleList.filter(s => s.doctor_id === doctor.id)}
+          />
         ))}
       </div>
 

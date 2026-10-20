@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Doctor } from '../types';
+import { Doctor, DoctorSchedule } from '../types';
 import { TimeSlot } from '../lib/slots';
 import { 
   User, Calendar as CalendarIcon, Clock, Phone, Mail, FileText, 
@@ -10,6 +10,7 @@ import {
   Stethoscope, ShieldAlert, Sparkles, Loader2, Award
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { getDoctorDisplayName, getDoctorDisplaySpecialty, formatDoctorScheduleSummary } from '@/lib/doctorUtils';
 
 interface BookingWizardProps {
   initialDoctorId?: string;
@@ -20,6 +21,9 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
   const router = useRouter();
   const { t, isUrdu } = useLanguage();
 
+  const [doctorList, setDoctorList] = useState<Doctor[]>(doctors);
+  const [doctorSchedules, setDoctorSchedules] = useState<DoctorSchedule[]>([]);
+
   // Wizard Step: 1, 2, 3, 4
   const [currentStep, setCurrentStep] = useState<number>(initialDoctorId ? 2 : 1);
 
@@ -27,6 +31,28 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>(initialDoctorId || (doctors[0]?.id || ''));
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
+
+  // Revalidate live doctors list on mount
+  useEffect(() => {
+    fetch('/api/doctors')
+      .then(res => res.json())
+      .then(docs => {
+        if (Array.isArray(docs)) setDoctorList(docs);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Fetch live schedules when selected doctor changes
+  useEffect(() => {
+    if (selectedDoctorId) {
+      fetch(`/api/schedules?doctorId=${selectedDoctorId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setDoctorSchedules(data);
+        })
+        .catch(() => {});
+    }
+  }, [selectedDoctorId]);
   
   // Patient details
   const [patientName, setPatientName] = useState('');
@@ -51,32 +77,11 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const selectedDoctor = doctors.find(d => d.id === selectedDoctorId);
+  const selectedDoctor = doctorList.find(d => d.id === selectedDoctorId);
 
-  // Doctor translation helper
-  const getDoctorName = (doc?: Doctor) => {
-    if (!doc) return '';
-    if (!isUrdu) return doc.name;
-    switch (doc.id) {
-      case 'doc-zubair': return t('doc_zubair_name');
-      case 'doc-fozia': return t('doc_fozia_name');
-      case 'doc-arshad': return t('doc_arshad_name');
-      case 'doc-umar': return t('doc_umar_name');
-      default: return doc.name;
-    }
-  };
-
-  const getDoctorSpecialty = (doc?: Doctor) => {
-    if (!doc) return '';
-    if (!isUrdu) return doc.specialty;
-    switch (doc.id) {
-      case 'doc-zubair': return t('doc_zubair_specialty');
-      case 'doc-fozia': return t('doc_fozia_specialty');
-      case 'doc-arshad': return t('doc_arshad_specialty');
-      case 'doc-umar': return t('doc_umar_specialty');
-      default: return doc.specialty;
-    }
-  };
+  // Doctor translation helpers honoring edited names
+  const getDoctorName = (doc?: Doctor) => getDoctorDisplayName(doc, isUrdu, t);
+  const getDoctorSpecialty = (doc?: Doctor) => getDoctorDisplaySpecialty(doc, isUrdu, t);
 
   // Synchronize whatsapp when sameAsPhone is checked
   useEffect(() => {
@@ -120,26 +125,8 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
     setErrorMessage(null);
 
     if (val) {
-      const [y, m, d] = val.split('-').map(Number);
-      const dateObj = new Date(y, m - 1, d);
-      const day = dateObj.getDay();
-
-      if (day === 0) {
-        setErrorMessage(isUrdu 
-          ? 'اتوار کو کلینک میں چھٹی ہوتی ہے۔ برائے مہربانی پیر تا ہفتہ میں سے انتخاب کریں۔' 
-          : 'Sunday is an official off-day for consultations. Please choose Monday to Saturday.');
-        return;
-      }
-
-      if (selectedDoctorId === 'doc-arshad' && day !== 6) {
-        setErrorMessage(isUrdu
-          ? 'ڈاکٹر محمد ارشد صرف ہر ہفتہ (9:00 صبح تا 3:00 سہ پہر) دستیاب ہوتے ہیں۔ برائے مہربانی ہفتے کا دن منتخب کریں۔'
-          : 'Dr. Muhammad Arshad is available exclusively on Saturdays (9:00 AM – 3:00 PM). Please select a Saturday.');
-        return;
-      }
-
       setSelectedDate(val);
-      // Auto-advance to time slot step
+      // Auto-advance to time slot step where /api/slots validates against real doctor schedule
       setCurrentStep(3);
     } else {
       setSelectedDate('');
@@ -306,7 +293,7 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
             </div>
 
             <div className="flex flex-col gap-3">
-              {doctors.map(doctor => {
+              {doctorList.map(doctor => {
                 const isSelected = selectedDoctorId === doctor.id;
                 const dName = getDoctorName(doctor);
                 const dSpecialty = getDoctorSpecialty(doctor);
@@ -407,20 +394,20 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
               </button>
             </div>
 
-            {selectedDoctorId === 'doc-arshad' && (
+            {selectedDoctor && (
               <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs sm:text-sm font-semibold flex items-center gap-2.5">
                 <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
                 <span>
                   {isUrdu 
-                    ? 'نوٹ: ڈاکٹر محمد ارشد صرف ہر ہفتہ (9:00 صبح تا 3:00 سہ پہر) دستیاب ہوتے ہیں۔ برائے مہربانی کلینڈر سے ہفتے کا دن منتخب کریں۔'
-                    : 'Notice: Dr. Muhammad Arshad is available exclusively on Saturdays (9:00 AM – 3:00 PM). Please select a Saturday on the calendar.'}
+                    ? `مشاورت کے مقررہ دن: ${formatDoctorScheduleSummary(doctorSchedules, isUrdu).days} (${formatDoctorScheduleSummary(doctorSchedules, isUrdu).timing})`
+                    : `Consultation Schedule: ${formatDoctorScheduleSummary(doctorSchedules, isUrdu).days} (${formatDoctorScheduleSummary(doctorSchedules, isUrdu).timing})`}
                 </span>
               </div>
             )}
 
             <div className="space-y-2">
               <label className="block text-sm font-bold text-slate-800">
-                {isUrdu ? 'مشاورت کی تاریخ کا انتخاب کریں (اتوار چھٹی)' : 'Select Consultation Date (Sunday is Off)'}
+                {isUrdu ? 'مشاورت کی تاریخ کا انتخاب کریں' : 'Select Consultation Date'}
               </label>
               <div className="relative">
                 <input
@@ -432,7 +419,7 @@ export default function BookingWizard({ initialDoctorId, doctors }: BookingWizar
                 />
               </div>
               <p className="text-xs text-slate-400">
-                {isUrdu ? 'کلینک میں پیر تا ہفتہ او پی ڈی ہوتی ہے۔ اتوار کو چھٹی ہوتی ہے۔' : 'Clinic consultations operate Monday to Saturday. Sunday is an off-day.'}
+                {isUrdu ? 'مقررہ شیڈول کے مطابق تاریخ کا انتخاب کریں۔' : 'Select an available date according to the doctor timetable above.'}
               </p>
             </div>
 

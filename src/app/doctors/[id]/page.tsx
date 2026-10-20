@@ -2,10 +2,14 @@ import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { storage } from '@/lib/storage';
+import { formatTime12Hour } from '@/lib/slots';
 import { 
   Calendar, Clock, Phone, Award, CheckCircle2, XCircle, 
   ArrowLeft, CalendarCheck, Share2, ShieldCheck, Stethoscope
 } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface Props {
   params: { id: string };
@@ -38,7 +42,7 @@ export default function DoctorDetailPage({ params }: Props) {
 
     const shiftTimings = dayShifts.map(s => {
       const p = s.period ? `${s.period.charAt(0).toUpperCase() + s.period.slice(1)}: ` : '';
-      return `${p}${s.start_time.slice(0, 5)} – ${s.end_time.slice(0, 5)}`;
+      return `${p}${formatTime12Hour(s.start_time)} – ${formatTime12Hour(s.end_time)}`;
     }).join(' | ');
 
     return {
@@ -173,9 +177,10 @@ export default function DoctorDetailPage({ params }: Props) {
               </table>
             </div>
 
-            {doctor.id === 'doc-arshad' && (
+            {doctorSchedules.filter(s => s.active).length > 0 && 
+             doctorSchedules.filter(s => s.active).every(s => s.day_of_week.toLowerCase() === 'saturday') && (
               <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium">
-                <strong>Notice:</strong> Dr. Muhammad Arshad holds specialist consultations every Saturday between 9:00 AM and 3:00 PM only. Appointments for Sunday through Friday are unavailable.
+                <strong>Notice:</strong> {doctor.name} holds specialist consultations on Saturdays only. Appointments for other days are unavailable.
               </div>
             )}
           </div>

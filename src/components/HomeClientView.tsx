@@ -1,8 +1,8 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import Link from 'next/link';
-import { Doctor } from '@/types';
+import { Doctor, DoctorSchedule } from '@/types';
 import DoctorCard from '@/components/DoctorCard';
 import { 
   Calendar, Clock, Phone, Stethoscope, Users, CheckCircle2, 
@@ -10,13 +10,27 @@ import {
   Sparkles, FileText, Activity
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { getDoctorDisplayName, getDoctorDisplaySpecialty, formatDoctorScheduleSummary } from '@/lib/doctorUtils';
 
 interface HomeClientViewProps {
   doctors: Doctor[];
+  schedules?: DoctorSchedule[];
 }
 
-export default function HomeClientView({ doctors }: HomeClientViewProps) {
+export default function HomeClientView({ doctors, schedules = [] }: HomeClientViewProps) {
   const { t, isUrdu } = useLanguage();
+  const [doctorList, setDoctorList] = React.useState<Doctor[]>(doctors);
+  const [scheduleList, setScheduleList] = React.useState<DoctorSchedule[]>(schedules);
+
+  React.useEffect(() => {
+    Promise.all([
+      fetch('/api/doctors').then(r => r.json()),
+      fetch('/api/schedules').then(r => r.json())
+    ]).then(([docs, schs]) => {
+      if (Array.isArray(docs)) setDoctorList(docs);
+      if (Array.isArray(schs)) setScheduleList(schs);
+    }).catch(() => {});
+  }, []);
 
   return (
     <div className="space-y-16 sm:space-y-24 pb-16">
@@ -126,61 +140,30 @@ export default function HomeClientView({ doctors }: HomeClientViewProps) {
 
                   {/* Doctor quick roster snapshot */}
                   <div className="space-y-3 text-xs">
-                    <div className="p-3 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-100 transition-colors">
-                      <div className="flex justify-between items-start gap-2">
-                        <span className="font-bold text-slate-900">
-                          {isUrdu ? t('doc_zubair_name') : 'Dr. Syed Zubair Younis'}
-                        </span>
-                        <span className="text-[10px] font-bold text-[#1E90FF] bg-blue-100/60 px-1.5 py-0.5 rounded">
-                          {isUrdu ? t('doc_zubair_specialty') : 'Medical Specialist'}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                        {isUrdu ? t('timing_zubair') : 'Mon–Sat: 9:00 AM – 2:00 PM & 5:00 PM – 8:00 PM'}
-                      </div>
-                    </div>
+                    {doctorList.slice(0, 4).map(doc => {
+                      const dName = getDoctorDisplayName(doc, isUrdu, t);
+                      const dSpec = getDoctorDisplaySpecialty(doc, isUrdu, t);
+                      const dSummary = formatDoctorScheduleSummary(
+                        scheduleList.filter(s => s.doctor_id === doc.id),
+                        isUrdu
+                      );
 
-                    <div className="p-3 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-100 transition-colors">
-                      <div className="flex justify-between items-start gap-2">
-                        <span className="font-bold text-slate-900">
-                          {isUrdu ? t('doc_fozia_name') : 'Dr. Fozia Choudhary'}
-                        </span>
-                        <span className="text-[10px] font-bold text-[#1E90FF] bg-blue-100/60 px-1.5 py-0.5 rounded">
-                          {isUrdu ? 'گائناکالوجسٹ' : 'Gynecologist'}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                        {isUrdu ? t('timing_fozia') : 'Mon–Sat: 9:00 AM – 2:00 PM'}
-                      </div>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-100 transition-colors">
-                      <div className="flex justify-between items-start gap-2">
-                        <span className="font-bold text-slate-900">
-                          {isUrdu ? t('doc_arshad_name') : 'Dr. Muhammad Arshad'}
-                        </span>
-                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded">
-                          {isUrdu ? t('doc_arshad_specialty') : 'Rheumatologist'}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                        {isUrdu ? t('timing_arshad') : 'Every Saturday: 9:00 AM – 3:00 PM'}
-                      </div>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-100 transition-colors">
-                      <div className="flex justify-between items-start gap-2">
-                        <span className="font-bold text-slate-900">
-                          {isUrdu ? t('doc_umar_name') : 'Dr. Umar Farooq'}
-                        </span>
-                        <span className="text-[10px] font-bold text-[#1E90FF] bg-blue-100/60 px-1.5 py-0.5 rounded">
-                          {isUrdu ? t('doc_umar_specialty') : 'Laparoscopic Surgeon'}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                        {isUrdu ? t('timing_umar') : 'Mon–Sat: 5:00 PM – 8:00 PM'}
-                      </div>
-                    </div>
+                      return (
+                        <div key={doc.id} className="p-3 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-100 transition-colors">
+                          <div className="flex justify-between items-start gap-2">
+                            <span className="font-bold text-slate-900 truncate">
+                              {dName}
+                            </span>
+                            <span className="text-[10px] font-bold text-[#1E90FF] bg-blue-100/60 px-1.5 py-0.5 rounded shrink-0">
+                              {dSpec}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                            {dSummary.days}: {dSummary.timing}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <Link
@@ -274,8 +257,12 @@ export default function HomeClientView({ doctors }: HomeClientViewProps) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {doctors.map(doctor => (
-            <DoctorCard key={doctor.id} doctor={doctor} />
+          {doctorList.map(doctor => (
+            <DoctorCard 
+              key={doctor.id} 
+              doctor={doctor} 
+              schedules={scheduleList.filter(s => s.doctor_id === doctor.id)}
+            />
           ))}
         </div>
       </section>

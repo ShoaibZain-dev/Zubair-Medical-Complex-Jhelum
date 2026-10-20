@@ -3,6 +3,9 @@ import { storage } from '@/lib/storage';
 import { getSessionUser } from '@/lib/auth';
 import { isHospitalAdminOrAbove } from '@/types';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);

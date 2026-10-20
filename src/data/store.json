@@ -12,7 +12,7 @@
     },
     {
       "id": "doc-fozia",
-      "name": "Dr. Fozia Choudhary",
+      "name": "Dr. Fozzia Choudhary",
       "specialty": "Gynecologist / Consultant",
       "contact": "0318-3621341",
       "active": true,
@@ -806,7 +806,7 @@
     {
       "name": "zain",
       "email": "malikshoaibzain029@gmail.com",
-      "password_hash": "8ea40de43a0ddbb6804853de369c5cb4:34987cf8b3860ede0a307bbb9100e6d4991eaaad3a0edf7f80e02cf0df6b4fe04c7266d92a7e64da2a48a3e5493d2b9f2bd29597ffc6a05258262ea7d0ffaace",
+      "password_hash": "628395e10248dfb400a242534cef9413:e697f43ef93d3e09ced29d05ebed80bb19c5cc3483904bdf2f06e77a25fe9696fbab5e0c6a53577b974733dd5ba8b8f9b81d939667b84f5e9912d881b0e3cac6",
       "role": "Admin",
       "active": true,
       "id": "usr-1791448588132",

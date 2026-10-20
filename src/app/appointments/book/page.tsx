@@ -6,6 +6,9 @@ interface Props {
   searchParams: { doctor?: string };
 }
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata = {
   title: 'Book Appointment | Zubair Medical Complex Jhelum',
   description: 'Book your medical consultation appointment online at Zubair Medical Complex Jhelum.',

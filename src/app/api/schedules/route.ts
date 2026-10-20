@@ -3,6 +3,9 @@ import { storage } from '@/lib/storage';
 import { getSessionUser } from '@/lib/auth';
 import { isHospitalAdminOrAbove, DayOfWeek } from '@/types';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const VALID_DAYS: DayOfWeek[] = [
   'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
 ];
