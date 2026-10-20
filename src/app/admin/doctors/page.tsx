@@ -99,29 +99,82 @@ export default function AdminDoctorsPage() {
     }).catch(() => setLoading(false));
   };
 
+  // Helper to compress image in the browser before upload to prevent payload limit issues
+  const compressImage = async (file: File, maxDim = 800, quality = 0.85): Promise<File> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height && width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+                    type: 'image/jpeg',
+                    lastModified: Date.now(),
+                  });
+                  resolve(compressedFile);
+                } else {
+                  resolve(file);
+                }
+              },
+              'image/jpeg',
+              quality
+            );
+          } else {
+            resolve(file);
+          }
+        };
+        img.onerror = () => resolve(file);
+      };
+      reader.onerror = () => resolve(file);
+    });
+  };
+
   // Photo Upload Handler
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
 
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(rawFile.type)) {
       alert('Please upload a valid image file (JPG, PNG, or WebP).');
       return;
     }
 
-    if (file.size > 4 * 1024 * 1024) {
-      alert('Photo file size must not exceed 4MB.');
+    if (rawFile.size > 8 * 1024 * 1024) {
+      alert('Photo file size must not exceed 8MB.');
       return;
     }
 
     setUploadingPhoto(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    if (docAvatarUrl) {
-      formData.append('previousPhotoUrl', docAvatarUrl);
-    }
 
     try {
+      const file = await compressImage(rawFile, 800, 0.85);
+      const formData = new FormData();
+      formData.append('file', file);
+      if (docAvatarUrl) {
+        formData.append('previousPhotoUrl', docAvatarUrl);
+      }
+
       const res = await fetch('/api/doctors/upload', {
         method: 'POST',
         body: formData

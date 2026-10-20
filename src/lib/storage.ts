@@ -201,47 +201,51 @@ function ensureDataFile(): DatabaseData {
     notificationLogs: []
   };
 
-  // 1. Try reading from primary project file if it exists (local dev / server)
-  try {
-    if (fs.existsSync(PRIMARY_DB_FILE)) {
-      const raw = fs.readFileSync(PRIMARY_DB_FILE, 'utf8');
-      const parsed = JSON.parse(raw);
-      memoryDbData = {
-        doctors: parsed.doctors || INITIAL_DOCTORS,
-        schedules: parsed.schedules || INITIAL_SCHEDULES,
-        appointments: parsed.appointments || [],
-        users: parsed.users || [],
-        socialLinks: (parsed.socialLinks && parsed.socialLinks.length > 0) ? parsed.socialLinks : INITIAL_SOCIAL_LINKS,
-        settings: parsed.settings || INITIAL_SETTINGS,
-        notificationLogs: parsed.notificationLogs || []
-      };
-      return memoryDbData;
-    }
-  } catch (error) {
-    console.error('Error reading primary database file:', error);
-  }
-
-  // 2. Try reading from fallback (temp) file if it exists (Vercel serverless / ephemeral)
+  let fallbackData: DatabaseData | null = null;
+  let fallbackMtime = 0;
   try {
     if (fs.existsSync(FALLBACK_DB_FILE)) {
       const raw = fs.readFileSync(FALLBACK_DB_FILE, 'utf8');
-      const parsed = JSON.parse(raw);
-      memoryDbData = {
-        doctors: parsed.doctors || INITIAL_DOCTORS,
-        schedules: parsed.schedules || INITIAL_SCHEDULES,
-        appointments: parsed.appointments || [],
-        users: parsed.users || [],
-        socialLinks: (parsed.socialLinks && parsed.socialLinks.length > 0) ? parsed.socialLinks : INITIAL_SOCIAL_LINKS,
-        settings: parsed.settings || INITIAL_SETTINGS,
-        notificationLogs: parsed.notificationLogs || []
-      };
-      return memoryDbData;
+      fallbackData = JSON.parse(raw);
+      fallbackMtime = fs.statSync(FALLBACK_DB_FILE).mtimeMs;
     }
   } catch (error) {
     console.error('Error reading fallback database file:', error);
   }
 
-  // 3. Fallback to initial default data (kept in memory, no disk write needed on initial read)
+  let primaryData: DatabaseData | null = null;
+  let primaryMtime = 0;
+  try {
+    if (fs.existsSync(PRIMARY_DB_FILE)) {
+      const raw = fs.readFileSync(PRIMARY_DB_FILE, 'utf8');
+      primaryData = JSON.parse(raw);
+      primaryMtime = fs.statSync(PRIMARY_DB_FILE).mtimeMs;
+    }
+  } catch (error) {
+    console.error('Error reading primary database file:', error);
+  }
+
+  // Determine which data to use:
+  // On Vercel, PRIMARY_DB_FILE is static from build, while FALLBACK_DB_FILE in /tmp has live runtime additions/edits.
+  const isVercel = Boolean(process.env.VERCEL || process.env.NEXT_PUBLIC_VERCEL_ENV);
+  const chosen = isVercel 
+    ? (fallbackData || primaryData) 
+    : (fallbackMtime > primaryMtime ? fallbackData : (primaryData || fallbackData));
+
+  if (chosen) {
+    memoryDbData = {
+      doctors: chosen.doctors || INITIAL_DOCTORS,
+      schedules: chosen.schedules || INITIAL_SCHEDULES,
+      appointments: chosen.appointments || [],
+      users: chosen.users || [],
+      socialLinks: (chosen.socialLinks && chosen.socialLinks.length > 0) ? chosen.socialLinks : INITIAL_SOCIAL_LINKS,
+      settings: chosen.settings || INITIAL_SETTINGS,
+      notificationLogs: chosen.notificationLogs || []
+    };
+    return memoryDbData;
+  }
+
+  // Fallback to initial default data (kept in memory)
   memoryDbData = initialData;
   return memoryDbData;
 }

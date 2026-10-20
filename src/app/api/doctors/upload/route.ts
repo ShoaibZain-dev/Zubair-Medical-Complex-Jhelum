@@ -60,27 +60,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 2. Fallback to local storage (e.g. offline dev or local setup)
+    // 2. Fallback to local storage (offline dev) or Base64 Data URL (Vercel read-only filesystem)
     if (!photoUrl) {
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'doctors');
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
-      const localPath = path.join(uploadDir, fileName);
-      fs.writeFileSync(localPath, fileBuffer);
-      photoUrl = `/uploads/doctors/${fileName}`;
-
-      // Clean up previous local file if applicable
-      if (previousPhotoUrl && previousPhotoUrl.startsWith('/uploads/doctors/')) {
-        try {
-          const oldLocalPath = path.join(process.cwd(), 'public', previousPhotoUrl);
-          if (fs.existsSync(oldLocalPath)) {
-            fs.unlinkSync(oldLocalPath);
-          }
-        } catch (cleanErr) {
-          console.warn('Failed to clean up old local photo:', cleanErr);
+      try {
+        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'doctors');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
         }
+
+        const localPath = path.join(uploadDir, fileName);
+        fs.writeFileSync(localPath, fileBuffer);
+        photoUrl = `/uploads/doctors/${fileName}`;
+
+        // Clean up previous local file if applicable
+        if (previousPhotoUrl && previousPhotoUrl.startsWith('/uploads/doctors/')) {
+          try {
+            const oldLocalPath = path.join(process.cwd(), 'public', previousPhotoUrl);
+            if (fs.existsSync(oldLocalPath)) {
+              fs.unlinkSync(oldLocalPath);
+            }
+          } catch (cleanErr) {
+            console.warn('Failed to clean up old local photo:', cleanErr);
+          }
+        }
+      } catch (fsErr) {
+        // Read-only filesystem (e.g. Vercel serverless /var/task)
+        // Store as base64 Data URL so it works seamlessly without write permissions
+        console.warn('Local filesystem is read-only. Falling back to Data URL for doctor photo.');
+        const mimeType = file.type || 'image/jpeg';
+        photoUrl = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
       }
     }
 
