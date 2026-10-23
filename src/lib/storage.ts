@@ -671,7 +671,21 @@ export const storage = {
 
   getSettings(): Record<string, string> {
     const data = ensureDataFile();
-    return data.settings;
+    const settings = { ...data.settings };
+    // Env-first provider: Vercel redeploys reset the local settings file to
+    // the 'mock' default, which silently disables real WhatsApp delivery.
+    // Let the environment decide when it is configured.
+    const envProvider = process.env.MESSAGING_PROVIDER || process.env.WHATSAPP_PROVIDER;
+    if (envProvider) {
+      settings.messaging_provider = envProvider;
+    } else if (
+      (!settings.messaging_provider || settings.messaging_provider === 'mock') &&
+      process.env.WHATSAPP_ACCESS_TOKEN &&
+      process.env.WHATSAPP_PHONE_NUMBER_ID
+    ) {
+      settings.messaging_provider = 'meta_whatsapp';
+    }
+    return settings;
   },
 
   updateSetting(key: string, value: string): void {
